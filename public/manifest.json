@@ -1,0 +1,23 @@
+{
+  "name": "Brand Workspace",
+  "short_name": "Brand Workspace",
+  "description": "Internal brand operations for events and photoshoots.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F9F6F1",
+  "theme_color": "#EDE4D4",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

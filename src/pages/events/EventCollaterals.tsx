@@ -1,0 +1,461 @@
+import { useState, useRef } from 'react'
+import { useParams } from 'react-router-dom'
+import { Plus, Trash2, Printer, Copy, Check, ImagePlus, MessageSquare, X } from 'lucide-react'
+import { useEventStore } from '@/store/useEventStore'
+import { useCurrentEventProject } from '@/hooks/useCurrentProject'
+import { useCurrentUser } from '@/hooks/useCurrentUser'
+import { useStoredImage, useImageStorage, buildMediaContext, type MediaContext } from '@/hooks/useImageStorage'
+import { useCommentStore } from '@/store/useCommentStore'
+import { cn } from '@/lib/utils'
+import { inputCls } from '@/components/ui/FormField'
+import CommentThread from '@/components/ui/CommentThread'
+import { MEDIA_ENTITY } from '@/lib/mediaEntityTypes'
+import type { CollateralItem, CollateralImage, CollateralStatus, CollateralFormat } from '@/types/event'
+
+// ─── Status config ────────────────────────────────────────────────────────────
+
+const STATUS_CONFIG: Record<CollateralStatus, { label: string; chipCls: string }> = {
+  'requested':        { label: 'Requested',        chipCls: 'bg-amber-100 text-amber-700'  },
+  'pending-review':   { label: 'Pending Review',   chipCls: 'bg-blue-100  text-blue-700'   },
+  'approved':         { label: 'Approved',         chipCls: 'bg-green-100 text-green-700'  },
+  'pending-revision': { label: 'Pending Revision', chipCls: 'bg-red-100   text-red-700'    },
+}
+const STATUS_KEYS = Object.keys(STATUS_CONFIG) as CollateralStatus[]
+type FilterVal = CollateralStatus | 'all'
+
+// ─── Plain-text brief formatter (for copy-to-clipboard) ──────────────────────
+
+function formatBriefText(item: CollateralItem): string {
+  const formatLabel = item.format === 'print' ? 'Print' : 'Digital'
+  return [
+    `COLLATERAL: ${item.title || '(untitled)'}`,
+    `FORMAT: ${formatLabel}${item.formatDetail ? ` — ${item.formatDetail}` : ''}`,
+    `STATUS: ${STATUS_CONFIG[item.status].label}`,
+    '',
+    'BRIEF TO DESIGNER:',
+    item.brief || '—',
+    '',
+    'COPY / CONTENT:',
+    item.copy || '—',
+  ].join('\n')
+}
+
+// ─── Image slot ───────────────────────────────────────────────────────────────
+
+function ImageSlot({
+  img,
+  onUpload,
+  onRemove,
+  mediaContext,
+  readOnly,
+}: {
+  img?: CollateralImage
+  onUpload: (imageId: string) => void
+  onRemove?: () => void
+  /** When set, the upload also background-syncs to Supabase Storage. */
+  mediaContext?: MediaContext
+  readOnly?: boolean
+}) {
+  const url = useStoredImage(img?.imageId || undefined)
+  const { save } = useImageStorage()
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const newId = await save(file, mediaContext)
+    onUpload(newId)
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  if (url) {
+    return (
+      <div className="relative group aspect-square rounded overflow-hidden bg-surface-1 border border-surface-3">
+        <img src={url} alt="Reference" className="w-full h-full object-cover" />
+        {onRemove && !readOnly && (
+          <button
+            onClick={onRemove}
+            className="absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-100 bg-black/60 text-white rounded p-0.5 transition-opacity no-print"
+          >
+            <X size={10} />
+          </button>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className="aspect-square rounded bg-surface-1 border border-dashed border-surface-3 flex items-center justify-center cursor-pointer hover:bg-surface-2 transition-colors group no-print"
+      onClick={() => fileRef.current?.click()}
+    >
+      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleChange} />
+      <ImagePlus size={14} className="text-ink-faint group-hover:text-ink-muted transition-colors" />
+    </div>
+  )
+}
+
+// ─── Collateral card ──────────────────────────────────────────────────────────
+
+function CollateralCard({
+  item,
+  cardNumber,
+  onUpdate,
+  onRemove,
+  onAddImage,
+  onRemoveImage,
+  projectId,
+  readOnly,
+}: {
+  item: CollateralItem
+  cardNumber: number
+  onUpdate: (patch: Partial<CollateralItem>) => void
+  onRemove: () => void
+  onAddImage: (imageId: string) => void
+  onRemoveImage: (imgId: string) => void
+  /** The project UUID — passed to CommentThread for Supabase sync. */
+  projectId: string
+  /** When true, hides edit/delete/upload controls and makes fields read-only. */
+  readOnly?: boolean
+}) {
+  const [copied, setCopied] = useState(false)
+  const [commentsOpen, setCommentsOpen] = useState(false)
+  const commentCount = useCommentStore((s) => s.getFor('collateral', item.id).length)
+  const sortedImages = [...item.images].sort((a, b) => a.order - b.order)
+  const emptyCount = readOnly ? 0 : Math.max(0, 4 - sortedImages.length)
+  const statusCfg = STATUS_CONFIG[item.status]
+
+  // Collateral card's stable id is the media entity_id (per-image ids are
+  // generated by the store after upload, so the card id is the right anchor).
+  const imageMediaContext = buildMediaContext(projectId, MEDIA_ENTITY.collateralReference, item.id)
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(formatBriefText(item))
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="bg-white border border-surface-3 rounded-lg overflow-hidden no-page-break">
+      {/* Card header */}
+      <div className="flex items-center gap-2 px-4 py-2.5 bg-surface-1 border-b border-surface-3">
+        <span className="text-2xs font-bold uppercase tracking-widest text-ink-faint w-5 shrink-0 tabular-nums">
+          {cardNumber}
+        </span>
+        <input
+          type="text"
+          value={item.title}
+          onChange={(e) => onUpdate({ title: e.target.value })}
+          readOnly={readOnly}
+          placeholder="Collateral name…"
+          className="flex-1 text-sm font-semibold bg-transparent border-none outline-none text-ink placeholder:text-ink-faint min-w-0"
+        />
+        {/* Status selector — screen only */}
+        <select
+          value={item.status}
+          onChange={(e) => onUpdate({ status: e.target.value as CollateralStatus })}
+          disabled={readOnly}
+          className={cn(
+            'text-xs font-semibold px-2 py-0.5 rounded-full border-none outline-none no-print disabled:opacity-100',
+            !readOnly && 'cursor-pointer',
+            statusCfg.chipCls,
+          )}
+        >
+          {STATUS_KEYS.map((s) => (
+            <option key={s} value={s}>{STATUS_CONFIG[s].label}</option>
+          ))}
+        </select>
+        {/* Status pill — print only */}
+        <span className={cn('text-xs font-semibold px-2 py-0.5 rounded-full hidden print:inline-block', statusCfg.chipCls)}>
+          {statusCfg.label}
+        </span>
+        {!readOnly && (
+          <button
+            onClick={onRemove}
+            className="text-ink-faint hover:text-red-500 transition-colors ml-0.5 no-print"
+          >
+            <Trash2 size={13} />
+          </button>
+        )}
+      </div>
+
+      <div className="p-4 space-y-3">
+        {/* Format row */}
+        <div className="flex items-end gap-3">
+          <div className="w-24 shrink-0 space-y-0.5">
+            <label className="text-2xs font-bold uppercase tracking-widest text-ink-faint block">
+              Format
+            </label>
+            <select
+              value={item.format}
+              onChange={(e) => onUpdate({ format: e.target.value as CollateralFormat })}
+              disabled={readOnly}
+              className={cn(inputCls, 'text-xs disabled:opacity-100')}
+            >
+              <option value="print">Print</option>
+              <option value="digital">Digital</option>
+            </select>
+          </div>
+          <div className="flex-1 space-y-0.5">
+            <label className="text-2xs font-bold uppercase tracking-widest text-ink-faint block">
+              {item.format === 'print' ? 'Print specification' : 'Digital specification'}
+            </label>
+            <input
+              type="text"
+              value={item.formatDetail}
+              onChange={(e) => onUpdate({ formatDetail: e.target.value })}
+              readOnly={readOnly}
+              placeholder={
+                item.format === 'print'
+                  ? 'e.g. A2 poster, double-sided'
+                  : 'e.g. Instagram Story 9:16, 1080×1920 px'
+              }
+              className={cn(inputCls, 'text-xs')}
+            />
+          </div>
+        </div>
+
+        {/* Brief */}
+        <div className="space-y-0.5">
+          <label className="text-2xs font-bold uppercase tracking-widest text-ink-faint block">
+            Brief (to designer)
+          </label>
+          <textarea
+            value={item.brief}
+            onChange={(e) => onUpdate({ brief: e.target.value })}
+            readOnly={readOnly}
+            placeholder="Creative direction, objectives, constraints, tone of voice…"
+            rows={3}
+            className={cn(inputCls, 'resize-none text-sm leading-relaxed')}
+          />
+        </div>
+
+        {/* Copy / Content */}
+        <div className="space-y-0.5">
+          <label className="text-2xs font-bold uppercase tracking-widest text-ink-faint block">
+            Copy / Content
+          </label>
+          <textarea
+            value={item.copy}
+            onChange={(e) => onUpdate({ copy: e.target.value })}
+            readOnly={readOnly}
+            placeholder="Text that must appear on this piece — headlines, body copy, CTAs, disclaimers…"
+            rows={3}
+            className={cn(inputCls, 'resize-none text-sm leading-relaxed')}
+          />
+        </div>
+
+        {/* Image references */}
+        <div className="space-y-1.5">
+          <label className="text-2xs font-bold uppercase tracking-widest text-ink-faint block">
+            Image References{' '}
+            <span className="font-normal normal-case tracking-normal text-ink-faint">(up to 4)</span>
+          </label>
+          {readOnly && sortedImages.length === 0 ? (
+            <p className="text-xs text-ink-faint">No image references.</p>
+          ) : (
+            <div className="grid grid-cols-4 gap-2">
+              {sortedImages.map((img) => (
+                <ImageSlot
+                  key={img.id}
+                  img={img}
+                  onUpload={() => {/* existing slot — no re-upload */}}
+                  onRemove={readOnly ? undefined : () => onRemoveImage(img.id)}
+                  readOnly={readOnly}
+                />
+              ))}
+              {Array.from({ length: emptyCount }).map((_, i) => (
+                <ImageSlot
+                  key={`empty-${i}`}
+                  onUpload={(imageId) => onAddImage(imageId)}
+                  mediaContext={imageMediaContext}
+                  readOnly={readOnly}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Footer actions — screen only */}
+        <div className="flex items-center justify-between pt-1 border-t border-surface-2 no-print">
+          <button
+            onClick={() => setCommentsOpen((o) => !o)}
+            className={cn(
+              'flex items-center gap-1.5 text-xs transition-colors',
+              commentsOpen ? 'text-accent font-medium' : 'text-ink-muted hover:text-ink'
+            )}
+          >
+            <MessageSquare size={12} />
+            {commentCount > 0 ? `Comments (${commentCount})` : 'Comments'}
+          </button>
+
+          <button
+            onClick={handleCopy}
+            className="flex items-center gap-1.5 text-xs text-ink-muted hover:text-ink transition-colors"
+          >
+            {copied
+              ? <><Check size={12} className="text-green-600" /> Copied!</>
+              : <><Copy size={12} /> Copy brief</>
+            }
+          </button>
+        </div>
+
+        {/* Comment thread — screen only */}
+        {commentsOpen && (
+          <div className="pt-3 border-t border-surface-2 no-print">
+            <CommentThread entityType="collateral" entityId={item.id} projectId={projectId} />
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
+
+export default function EventCollaterals() {
+  const { id } = useParams<{ id: string }>()
+  const project = useCurrentEventProject()
+  const { canEdit } = useCurrentUser()
+
+  const addCollateral        = useEventStore((s) => s.addCollateral)
+  const updateCollateral     = useEventStore((s) => s.updateCollateral)
+  const removeCollateral     = useEventStore((s) => s.removeCollateral)
+  const addCollateralImage   = useEventStore((s) => s.addCollateralImage)
+  const removeCollateralImage = useEventStore((s) => s.removeCollateralImage)
+
+  const [filter, setFilter] = useState<FilterVal>('all')
+
+  if (!project || !id) return <div className="p-6 text-sm text-ink-muted">Project not found.</div>
+
+  const readOnly = !canEdit('event.collaterals', id)
+
+  const sorted   = [...(project.collaterals ?? [])].sort((a, b) => a.order - b.order)
+  const filtered = filter === 'all' ? sorted : sorted.filter((c) => c.status === filter)
+
+  // Status counts for summary bar
+  const counts = Object.fromEntries(
+    STATUS_KEYS.map((s) => [s, sorted.filter((c) => c.status === s).length])
+  ) as Record<CollateralStatus, number>
+
+  return (
+    <div className="p-6 max-w-6xl">
+
+      {/* ── Screen header ─────────────────────────────────────────────────── */}
+      <div className="flex items-start justify-between mb-5 no-print">
+        <div>
+          <h1 className="text-lg font-bold text-ink">Collaterals</h1>
+          <p className="text-sm text-ink-muted mt-0.5">
+            Brief and track creative collateral work for your graphic designer.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0 ml-4">
+          {sorted.length > 0 && (
+            <button
+              onClick={() => window.print()}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-surface-3 rounded text-ink-secondary hover:bg-surface-1 transition-colors"
+            >
+              <Printer size={13} /> Print / Export
+            </button>
+          )}
+          {!readOnly && (
+            <button
+              onClick={() => addCollateral(id)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-accent text-white rounded hover:bg-accent-dark transition-colors"
+            >
+              <Plus size={13} /> Add collateral
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ── Print header ──────────────────────────────────────────────────── */}
+      <div className="hidden print:block mb-6 border-b-2 border-ink pb-4">
+        <p className="text-2xs font-bold uppercase tracking-[0.2em] text-ink-faint mb-1">
+          Collaterals Brief
+        </p>
+        <h2 className="text-3xl font-bold text-ink">{project.name}</h2>
+        <p className="text-sm text-ink-muted mt-1">{sorted.length} collateral{sorted.length !== 1 ? 's' : ''}</p>
+      </div>
+
+      {sorted.length === 0 ? (
+        <div className="bg-surface-1 border border-dashed border-surface-3 rounded-lg p-12 text-center">
+          <p className="text-sm text-ink-muted mb-1">No collaterals yet</p>
+          {!readOnly && (
+            <>
+              <p className="text-xs text-ink-faint mb-4">
+                Add collateral briefs for your graphic designer — print and digital formats,
+                with image references and copy.
+              </p>
+              <button
+                onClick={() => addCollateral(id)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-accent text-white rounded hover:bg-accent-dark transition-colors mx-auto"
+              >
+                <Plus size={13} /> Add collateral
+              </button>
+            </>
+          )}
+        </div>
+      ) : (
+        <>
+          {/* ── Status summary bar ───────────────────────────────────────── */}
+          <div className="flex flex-wrap items-center gap-3 mb-4 no-print">
+            {STATUS_KEYS.filter((s) => counts[s] > 0).map((s) => (
+              <span
+                key={s}
+                className={cn('text-xs font-medium px-2.5 py-0.5 rounded-full', STATUS_CONFIG[s].chipCls)}
+              >
+                {counts[s]} {STATUS_CONFIG[s].label}
+              </span>
+            ))}
+            <span className="text-xs text-ink-faint">{sorted.length} total</span>
+          </div>
+
+          {/* ── Filter tabs ──────────────────────────────────────────────── */}
+          <div className="flex flex-wrap items-center gap-1 mb-5 no-print">
+            {(['all', ...STATUS_KEYS] as FilterVal[]).map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={cn(
+                  'px-3 py-1 text-xs rounded transition-colors',
+                  filter === f
+                    ? 'bg-accent text-white font-medium'
+                    : 'text-ink-muted hover:text-ink hover:bg-surface-2',
+                )}
+              >
+                {f === 'all'
+                  ? `All (${sorted.length})`
+                  : `${STATUS_CONFIG[f].label} (${counts[f]})`
+                }
+              </button>
+            ))}
+          </div>
+
+          {/* ── Cards grid ───────────────────────────────────────────────── */}
+          {filtered.length === 0 ? (
+            <div className="bg-surface-1 border border-dashed border-surface-3 rounded-lg p-8 text-center">
+              <p className="text-sm text-ink-muted">No collaterals match this filter.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 print-area">
+              {filtered.map((item) => (
+                <CollateralCard
+                  key={item.id}
+                  item={item}
+                  cardNumber={sorted.indexOf(item) + 1}
+                  onUpdate={(patch) => updateCollateral(id, item.id, patch)}
+                  onRemove={() => removeCollateral(id, item.id)}
+                  onAddImage={(imageId) => addCollateralImage(id, item.id, imageId)}
+                  onRemoveImage={(imgId) => removeCollateralImage(id, item.id, imgId)}
+                  projectId={id}
+                  readOnly={readOnly}
+                />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}

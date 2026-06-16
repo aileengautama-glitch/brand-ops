@@ -1,0 +1,188 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Brand Ops — Print / PDF export stylesheet
+
+   Orientation is injected by usePrint() per artefact:
+     portrait  → Call Sheet, D-Day Run Sheet
+     landscape → Brief Decks (image-heavy)
+
+   If no data-print attribute is present the browser default (portrait) is used.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+@media print {
+
+  /* ── Page size (orientation set per-artefact via data-print-orientation) ── */
+  @page {
+    margin: 1.5cm 1.8cm;
+  }
+
+  /* ── Reset app shell overflow / height ────────────────────────────────────
+     AppShell uses h-screen + overflow-hidden which would clip print output. */
+  html,
+  body,
+  #root {
+    height: auto !important;
+    overflow: visible !important;
+    background: white !important;
+  }
+
+  /* Flatten the sidebar+main flex row so content fills full width */
+  .app-shell-inner {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* The sidebar and topbar should vanish */
+  .no-print {
+    display: none !important;
+  }
+
+  /* ── Main content wrapper ─────────────────────────────────────────────────
+     Remove app-level padding/max-width; the PrintableDocument wrapper
+     provides its own intentional margins. */
+  main {
+    overflow: visible !important;
+    height: auto !important;
+    padding: 0 !important;
+  }
+
+  .print-page-wrapper {
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* ── Body typography ──────────────────────────────────────────────────────
+     Scale down from screen sizes; use a more print-appropriate line height. */
+  body {
+    font-size: 10pt !important;
+    line-height: 1.45 !important;
+    color: #151811 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Normalise heading sizes for print */
+  h1 { font-size: 20pt !important; }
+  h2 { font-size: 14pt !important; }
+  h3 { font-size: 10pt !important; }
+
+  /* ── Print area ───────────────────────────────────────────────────────────
+     Wrap your printable content in <div className="print-area"> */
+  .print-area {
+    width: 100%;
+    max-width: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  /* ── Page break helpers ───────────────────────────────────────────────────  */
+  .page-break-before { page-break-before: always !important; }
+  .page-break-after  { page-break-after:  always !important; }
+  .no-page-break     {
+    page-break-inside: avoid !important;
+    break-inside:      avoid !important;
+  }
+
+  /* ── Images ───────────────────────────────────────────────────────────────  */
+  img {
+    max-width: 100% !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Ensure images inside moodboard grids render at consistent size */
+  .print-area .grid img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* ── Tables ───────────────────────────────────────────────────────────────  */
+  table {
+    border-collapse: collapse !important;
+    page-break-inside: auto !important;
+  }
+
+  thead {
+    display: table-header-group !important; /* repeat on each page */
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  td, th {
+    page-break-inside: avoid !important;
+  }
+
+  /* ── Remove interactive decorations ──────────────────────────────────────  */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+    transition: none !important;
+  }
+
+  button,
+  [role="button"] {
+    display: none !important;
+  }
+
+  /* Except explicitly print-visible buttons */
+  .print-visible {
+    display: inline-flex !important;
+  }
+
+  /* Elements hidden on screen but shown in print (e.g. text alternatives to interactive buttons).
+     Uses revert so block elements stay block and inlines stay inline. */
+  .print-only {
+    display: revert !important;
+  }
+
+  /* ── Print-specific document header ──────────────────────────────────────  */
+  .print-doc-header {
+    border-bottom: 2px solid #151811;
+    padding-bottom: 12pt;
+    margin-bottom: 24pt;
+  }
+
+  .print-doc-header .print-label {
+    font-size: 7pt;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #9B9B8E;
+    display: block;
+    margin-bottom: 4pt;
+  }
+
+  .print-doc-header h1 {
+    font-size: 22pt !important;
+    font-weight: 700;
+    line-height: 1.1;
+    margin: 0;
+  }
+
+  /* ── Print section headings ───────────────────────────────────────────────  */
+  .print-section-label {
+    font-size: 7pt !important;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #9B9B8E;
+    display: block;
+    margin-bottom: 8pt;
+  }
+
+  /* ── Colour backgrounds — force print ────────────────────────────────────  */
+  .print-area [class*="bg-surface"],
+  .print-area [class*="bg-accent"],
+  .print-area [class*="bg-amber"],
+  .print-area [class*="bg-green"],
+  .print-area [class*="bg-red"] {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

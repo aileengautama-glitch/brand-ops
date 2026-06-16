@@ -1,0 +1,125 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  Helvetica Now — place your licensed font files in /public/fonts/
+  Expected filenames (update src() paths if yours differ):
+    HelveticaNow-Regular.woff2 / .woff  (weight 400)
+    HelveticaNow-Medium.woff2  / .woff  (weight 500)
+    HelveticaNow-Bold.woff2    / .woff  (weight 700)
+*/
+@font-face {
+  font-family: 'Helvetica Now';
+  src: url('/fonts/HelveticaNow-Regular.woff2') format('woff2'),
+       url('/fonts/HelveticaNow-Regular.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Helvetica Now';
+  src: url('/fonts/HelveticaNow-Medium.woff2') format('woff2'),
+       url('/fonts/HelveticaNow-Medium.woff') format('woff');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Helvetica Now';
+  src: url('/fonts/HelveticaNow-Bold.woff2') format('woff2'),
+       url('/fonts/HelveticaNow-Bold.woff') format('woff');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    @apply bg-base font-sans text-sm antialiased;
+    color: #151811;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  /* Thin, minimal scrollbars */
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #D5C9B5;
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #C2B49A;
+  }
+
+  /* Focus ring — subtle, not blue */
+  *:focus-visible {
+    outline: 2px solid #566246;
+    outline-offset: 2px;
+  }
+
+  /* Inputs / textareas base */
+  input,
+  textarea,
+  select {
+    @apply font-sans;
+    color: #151811;
+  }
+
+  /* Remove autofill blue tint in Chrome */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 40px #ffffff inset;
+    -webkit-text-fill-color: #151811;
+  }
+}
+
+@layer components {
+  /*
+    Soft card — the shared surface treatment established in Phase 9 (Home,
+    My Tasks) and rolled out in Phase 10. Use `.card-soft` for static panels;
+    add `.card-interactive` for clickable cards that should lift on hover.
+    Pair with padding utilities at the call site (e.g. `card-soft p-4`).
+  */
+  .card-soft {
+    @apply bg-white border border-surface-3 rounded-xl;
+    box-shadow: 0 1px 2px rgba(21, 24, 17, 0.03);
+  }
+  .card-interactive {
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+  }
+  .card-interactive:hover {
+    border-color: rgba(86, 98, 70, 0.4); /* accent (#566246) @ 40% */
+    box-shadow: 0 4px 16px rgba(21, 24, 17, 0.06);
+  }
+}
+
+@layer utilities {
+  .text-ink { color: #151811; }
+  .text-ink-secondary { color: #4A4A3D; }
+  .text-ink-muted { color: #6B6B5E; }
+  .text-ink-faint { color: #9B9B8E; }
+
+  /* Hidden on screen, visible only when printing */
+  .print-only { display: none !important; }
+}

@@ -1,0 +1,17 @@
+# Dependencies
+node_modules
+
+# Build output
+dist
+*.tsbuildinfo
+
+# Environment / secrets (keep .env.example tracked)
+.env
+.env.*
+!.env.example
+*.local
+
+# Tooling / editor / OS
+.vercel
+.DS_Store
+*.log
