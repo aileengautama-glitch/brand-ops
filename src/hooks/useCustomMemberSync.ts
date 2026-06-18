@@ -24,6 +24,7 @@
  */
 import { useEffect } from 'react'
 import { useUserStore } from '@/store/useUserStore'
+import { useAuthStore } from '@/store/useAuthStore'
 import { isSupabaseEnabled } from '@/lib/supabase'
 import { supabasePushCustomMember } from '@/repositories/people'
 
@@ -35,7 +36,9 @@ export function useCustomMemberSync(): void {
     // ── 1. Initial push: all current custom members → Supabase ───────────────
     // upsert with onConflict='id' means existing rows are updated with latest values.
     void (async () => {
+      const selfId = useAuthStore.getState().linkedPersonId
       for (const m of useUserStore.getState().customMembers) {
+        if (m.id === selfId) continue // don't echo your own remote-hydrated identity
         await supabasePushCustomMember(m)
       }
     })()
@@ -47,7 +50,9 @@ export function useCustomMemberSync(): void {
 
       const prevMap = new Map(prevState.customMembers.map((m) => [m.id, m]))
 
+      const selfId = useAuthStore.getState().linkedPersonId
       for (const m of state.customMembers) {
+        if (m.id === selfId) continue // skip the member's own hydrated record (not an admin edit)
         const prev = prevMap.get(m.id)
         // Push if new (no prev) or if any field changed (updatedAt is the change signal).
         if (!prev || prev.updatedAt !== m.updatedAt) {

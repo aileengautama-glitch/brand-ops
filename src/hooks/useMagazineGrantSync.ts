@@ -29,6 +29,7 @@
  */
 import { useEffect } from 'react'
 import { useUserStore } from '@/store/useUserStore'
+import { useAuthStore } from '@/store/useAuthStore'
 import { isSupabaseEnabled } from '@/lib/supabase'
 import { supabaseUpsertAccessGrant, supabaseDeleteAccessGrant } from '@/repositories/access'
 import type { AccessLevel, ProjectGrant } from '@/auth/access'
@@ -74,8 +75,10 @@ export function useMagazineGrantSync(): void {
     // FK violations (project or person not yet in Supabase) are expected and logged.
     // Self-heals on subsequent user interactions once FK dependencies are satisfied.
     void (async () => {
+      const selfId = useAuthStore.getState().linkedPersonId
       const rows = flattenMagazineGrants(useUserStore.getState().accessGrants)
       for (const r of rows) {
+        if (r.userId === selfId) continue // don't echo your own remote-hydrated grants
         await supabaseUpsertAccessGrant(r.userId, r.projectId, r.sectionKey, r.level)
       }
     })()
@@ -93,8 +96,11 @@ export function useMagazineGrantSync(): void {
       const prevMap = new Map(prevRows.map((r) => [rowKey(r), r]))
       const nextMap = new Map(nextRows.map((r) => [rowKey(r), r]))
 
+      const selfId = useAuthStore.getState().linkedPersonId
+
       // Added or level changed → upsert
       for (const [k, r] of nextMap) {
+        if (r.userId === selfId) continue // skip own hydrated grants (not an admin edit)
         const p = prevMap.get(k)
         if (!p || p.level !== r.level) {
           void supabaseUpsertAccessGrant(r.userId, r.projectId, r.sectionKey, r.level)
@@ -103,6 +109,7 @@ export function useMagazineGrantSync(): void {
 
       // Removed → delete
       for (const [k, r] of prevMap) {
+        if (r.userId === selfId) continue // skip own hydrated grants
         if (!nextMap.has(k)) {
           void supabaseDeleteAccessGrant(r.userId, r.projectId, r.sectionKey)
         }

@@ -5,6 +5,7 @@ import LoginGate from '@/components/auth/LoginGate'
 import { useUserStore } from '@/store/useUserStore'
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth'
 import { useAuthBridge } from '@/hooks/useAuthBridge'
+import { useRemoteIdentityHydration } from '@/hooks/useRemoteIdentityHydration'
 import { useProjectSync } from '@/hooks/useProjectSync'
 import { useTaskSync }    from '@/hooks/useTaskSync'
 import { useCommentSync } from '@/hooks/useCommentSync'
@@ -46,6 +47,10 @@ export default function AppShell() {
   // Phase 6D: bridge a linked Supabase identity → currentUserId (auto-login when linked).
   // Unlinked signed-in users are NOT bridged (LoginGate shows a "not linked" state).
   useAuthBridge()
+
+  // Cross-device member login: hydrate a signed-in (non-APP_USER) member's identity +
+  // grants from Supabase so useCurrentUser resolves them on a device that didn't create them.
+  useRemoteIdentityHydration()
 
   // Phase B: keep project list in sync with Supabase across devices.
   // No-op when VITE_SUPABASE_URL is absent (pure-local dev / offline).

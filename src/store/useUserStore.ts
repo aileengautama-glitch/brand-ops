@@ -122,6 +122,13 @@ interface UserStoreState {
   updateCustomMember: (id: string, patch: Partial<CustomMember>) => void
   /** Delete a custom member and any access grants keyed by their id. */
   removeCustomMember: (id: string) => void
+  /**
+   * Hydrate a signed-in member's identity + grants from Supabase into the local
+   * store (cross-device login). Upserts the CustomMember by id and replaces their
+   * grants, so useCurrentUser resolves them and the scoped model applies on a device
+   * that did not create them. Additive; touches only this member's record + grants.
+   */
+  hydrateRemoteIdentity: (member: CustomMember, grants: ProjectGrant[]) => void
 
   // ── Project-deletion cleanup ─────────────────────────────────────────────────
   /** Remove every user's grant + membership for a deleted project (prevents orphans). */
@@ -246,6 +253,12 @@ export const useUserStore = create<UserStoreState>()(
             accessGrants: restGrants,
           }
         }),
+
+      hydrateRemoteIdentity: (member, grants) =>
+        set((s) => ({
+          customMembers: [...s.customMembers.filter((m) => m.id !== member.id), member],
+          accessGrants:  { ...s.accessGrants, [member.id]: grants },
+        })),
 
       purgeProjectAccess: (module, projectId) =>
         set((s) => {
