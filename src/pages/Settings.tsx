@@ -10,6 +10,7 @@ import { useMagazineStore } from '@/store/useMagazineStore'
 import { isSupabaseEnabled } from '@/lib/supabase'
 import { inviteByEmail } from '@/lib/supabaseAuth'
 import { PeopleRepository } from '@/repositories'
+import { supabaseDeleteCustomMember } from '@/repositories/people'
 import { APP_USERS, ROLE_LABELS } from '@/auth/users'
 import {
   MODULE_SECTIONS, MODULE_LABELS,
@@ -706,6 +707,7 @@ function PeopleInvitesSection() {
   const [busyId, setBusyId] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<Record<string, { ok: boolean; msg: string }>>({})
   const [confirmRemove, setConfirmRemove] = useState<CustomMember | null>(null)
+  const [removing, setRemoving] = useState(false)
 
   // Step 6 — "Active" derives from canonical remote truth: people.auth_user_id
   // (set server-side by the 0017 trigger when an invite is accepted). Empty in
@@ -746,6 +748,23 @@ function PeopleInvitesSection() {
     } else {
       setFeedback((f) => ({ ...f, [m.id]: { ok: false, msg: res.error ?? 'Invite failed' } }))
     }
+  }
+
+  // Admin "remove user": delete the Supabase people row first (FK cascade revokes their
+  // grants/memberships → access gone), then remove locally. On a remote failure, keep the
+  // member and surface the error rather than silently leaving them able to sign in.
+  const handleRemove = async (m: CustomMember) => {
+    if (removing) return
+    setRemoving(true)
+    const res = await supabaseDeleteCustomMember(m.id)
+    setRemoving(false)
+    if (!res.ok) {
+      setFeedback((f) => ({ ...f, [m.id]: { ok: false, msg: res.error ?? 'Could not remove from server' } }))
+      setConfirmRemove(null)
+      return
+    }
+    removeCustomMember(m.id) // local removal (member + their local grants)
+    setConfirmRemove(null)
   }
 
   return (
@@ -888,9 +907,9 @@ function PeopleInvitesSection() {
       <ConfirmDialog
         open={!!confirmRemove}
         title="Remove member"
-        message={`Remove "${confirmRemove?.name}"? Their access grants are also removed. This does not delete an already-activated login account.`}
-        confirmLabel="Remove"
-        onConfirm={() => { if (confirmRemove) removeCustomMember(confirmRemove.id); setConfirmRemove(null) }}
+        message={`Remove "${confirmRemove?.name}"? This deletes their workspace profile and all access grants${isSupabaseEnabled ? ' (Supabase + local)' : ''} and revokes their access immediately. If they had an email login, the auth record is left orphaned — harmless, since it can no longer reach any project. This cannot be undone.`}
+        confirmLabel={removing ? 'Removing…' : 'Remove'}
+        onConfirm={() => { if (confirmRemove) void handleRemove(confirmRemove) }}
         onCancel={() => setConfirmRemove(null)}
       />
     </div>

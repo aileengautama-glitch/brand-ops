@@ -130,3 +130,18 @@ export async function supabasePushCustomMember(member: CustomMember): Promise<vo
     console.warn('[CustomMemberSync] push failed:', member.id, error.message)
   }
 }
+
+/**
+ * Hard-delete a member's people row in Supabase (admin "remove user"). FK ON DELETE
+ * CASCADE removes their access_grants + project_members rows too, so access is revoked.
+ * The auth.users record (if they ever signed in) is NOT removed — that needs the
+ * service-role key, which is forbidden in the client — but with no people row they can
+ * no longer reconcile to a workspace identity, so they're locked out. Admin-only at the
+ * RLS layer (people_delete). No-op (ok) when Supabase is off.
+ */
+export async function supabaseDeleteCustomMember(id: string): Promise<{ ok: boolean; error?: string }> {
+  if (!supabase) return { ok: true }
+  const { error } = await supabase.from('people').delete().eq('id', id)
+  if (error) { console.warn('[People] delete failed:', id, error.message); return { ok: false, error: error.message } }
+  return { ok: true }
+}

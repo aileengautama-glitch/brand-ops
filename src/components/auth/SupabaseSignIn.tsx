@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { LogOut, ArrowLeft } from 'lucide-react'
 import { useAuthStore } from '@/store/useAuthStore'
 import { signOutEverywhere } from '@/lib/authActions'
+import { sendSignInLink } from '@/lib/supabaseAuth'
 
 /**
  * SupabaseSignIn — Phase 6D email/password sign-in, rendered additively inside LoginGate.
@@ -20,6 +21,8 @@ export default function SupabaseSignIn({ onBack }: { onBack?: () => void }) {
   const [email, setEmail]           = useState('')
   const [password, setPassword]     = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [linkState, setLinkState]   = useState<'idle' | 'sending' | 'sent'>('idle')
+  const [linkError, setLinkError]   = useState<string | null>(null)
 
   // Signed in, but not reconciled to a workspace profile → clear dead-end (no bridge).
   if (status === 'signedIn' && !linkedPersonId) {
@@ -49,6 +52,14 @@ export default function SupabaseSignIn({ onBack }: { onBack?: () => void }) {
     // Success → the bridge closes the gate (if linked), or the unlinked panel above renders.
   }
 
+  const handleSendLink = async () => {
+    if (!email.trim() || linkState === 'sending') return
+    setLinkState('sending'); setLinkError(null)
+    const r = await sendSignInLink(email.trim())
+    if (r.ok) setLinkState('sent')
+    else { setLinkState('idle'); setLinkError(r.error ?? 'Could not send a sign-in link') }
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       <div className="text-center mb-1">
@@ -72,6 +83,23 @@ export default function SupabaseSignIn({ onBack }: { onBack?: () => void }) {
       >
         {submitting ? 'Signing in…' : 'Sign in'}
       </button>
+
+      {/* Passwordless option — invited members (no password) get a magic sign-in link. */}
+      {linkState === 'sent' ? (
+        <p className="text-xs text-center text-accent">
+          Sign-in link sent to {email.trim()}. Check your inbox.
+        </p>
+      ) : (
+        <button
+          type="button" onClick={handleSendLink}
+          disabled={!email.trim() || linkState === 'sending'}
+          className="w-full text-xs text-ink-muted hover:text-ink transition-colors disabled:opacity-40"
+        >
+          {linkState === 'sending' ? 'Sending…' : 'Email me a sign-in link instead'}
+        </button>
+      )}
+      {linkError && <p className="text-xs text-center text-red-500">{linkError}</p>}
+
       {onBack && (
         <button
           type="button" onClick={onBack}

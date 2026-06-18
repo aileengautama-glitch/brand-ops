@@ -74,6 +74,27 @@ export async function inviteByEmail(
   return { ok: true }
 }
 
+/**
+ * Send a passwordless sign-in link to an EXISTING user (shouldCreateUser: false — the
+ * gate must never create accounts; only an admin invite does that). Lets invited members,
+ * who have no password, self-serve a fresh session from the email-only LoginGate.
+ */
+export async function sendSignInLink(
+  email: string,
+  redirectTo?: string,
+): Promise<{ ok: boolean; error?: string }> {
+  if (!supabase) return { ok: false, error: 'Supabase is not configured' }
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      shouldCreateUser: false,
+      emailRedirectTo: redirectTo ?? window.location.origin,
+    },
+  })
+  if (error) { console.warn('[Auth] sign-in link failed:', error.message); return { ok: false, error: error.message } }
+  return { ok: true }
+}
+
 /** Sign out. onAuthStateChange fires → store resets to signedOut. */
 export async function signOut(): Promise<void> {
   if (!supabase) return
