@@ -94,6 +94,13 @@ export async function supabasePushCustomMember(member: CustomMember): Promise<vo
   if (!supabase) return
 
   const derived = customToPerson(member)
+
+  // Preserve the server-managed link: read any existing auth_user_id so the upsert below
+  // doesn't clobber it (the 0017 trigger owns this column; writing null would unlink an
+  // already-invited member on the next admin re-sync).
+  const { data: existing } = await supabase
+    .from('people').select('auth_user_id').eq('id', member.id).maybeSingle()
+
   const { error } = await supabase
     .from('people')
     .upsert(
@@ -113,7 +120,9 @@ export async function supabasePushCustomMember(member: CustomMember): Promise<vo
         initials:        derived.initials,       // same derivation as customToPerson
         avatar_color:    derived.avatarColor,    // same derivation as customToPerson
         login_enabled:   false,                  // no login account yet
-        auth_user_id:    null,                   // linked in the auth phase
+        // auth_user_id is SERVER-managed (0017 link trigger). Pass the EXISTING value through
+        // instead of null so a re-sync upsert never clobbers/unlinks an invited member.
+        auth_user_id:    existing?.auth_user_id ?? null,
       },
       { onConflict: 'id' }
     )
