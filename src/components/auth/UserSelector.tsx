@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { LogOut, UserIcon, RefreshCw, Settings } from 'lucide-react'
+import { LogOut, Settings } from 'lucide-react'
 import { signOutEverywhere } from '@/lib/authActions'
 import { cn } from '@/lib/utils'
 import { useUserStore } from '@/store/useUserStore'
@@ -366,7 +366,7 @@ export default function UserSelector({ open, onClose }: UserSelectorProps) {
 
 // ─── Compact chip / dropdown menu for the top bar ──────────────────────────────
 
-export function UserChip({ onClick }: { onClick: () => void }) {
+export function UserChip() {
   const currentUserId = useUserStore((s) => s.currentUserId)
   const customMembers = useUserStore((s) => s.customMembers)
   // Resolve a seed account, else an admin-created member (invited/linked identity).
@@ -384,17 +384,8 @@ export function UserChip({ onClick }: { onClick: () => void }) {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  if (!user) {
-    return (
-      <button
-        onClick={onClick}
-        className="flex items-center gap-1 px-2 py-1 rounded text-xs text-ink-faint hover:text-ink hover:bg-surface-3 transition-colors"
-      >
-        <UserIcon size={13} />
-        Select profile
-      </button>
-    )
-  }
+  // No resolved identity → the full-screen LoginGate is showing; render nothing here.
+  if (!user) return null
 
   return (
     <div className="relative" ref={ref}>
@@ -417,13 +408,6 @@ export function UserChip({ onClick }: { onClick: () => void }) {
             <p className="text-2xs text-ink-faint mt-0.5">{ROLE_LABELS[user.role]}</p>
           </div>
           {/* Actions */}
-          <button
-            onClick={() => { setMenuOpen(false); onClick() }}
-            className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-ink hover:bg-surface-1 transition-colors"
-          >
-            <RefreshCw size={12} className="text-ink-faint" />
-            Switch user
-          </button>
           <Link
             to="/settings"
             onClick={() => setMenuOpen(false)}

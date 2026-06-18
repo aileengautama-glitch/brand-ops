@@ -10,7 +10,7 @@ import { signOutEverywhere } from '@/lib/authActions'
  * gate closes (if the account is linked to a workspace profile). If signed in but NOT
  * linked, shows a clear dead-end with a sign-out option (it does NOT bridge).
  */
-export default function SupabaseSignIn({ onBack }: { onBack: () => void }) {
+export default function SupabaseSignIn({ onBack }: { onBack?: () => void }) {
   const status         = useAuthStore((s) => s.status)
   const authUser       = useAuthStore((s) => s.authUser)
   const linkedPersonId = useAuthStore((s) => s.linkedPersonId)
@@ -72,12 +72,14 @@ export default function SupabaseSignIn({ onBack }: { onBack: () => void }) {
       >
         {submitting ? 'Signing in…' : 'Sign in'}
       </button>
-      <button
-        type="button" onClick={onBack}
-        className="w-full flex items-center justify-center gap-1.5 text-xs text-ink-muted hover:text-ink transition-colors"
-      >
-        <ArrowLeft size={12} /> Back to profiles
-      </button>
+      {onBack && (
+        <button
+          type="button" onClick={onBack}
+          className="w-full flex items-center justify-center gap-1.5 text-xs text-ink-muted hover:text-ink transition-colors"
+        >
+          <ArrowLeft size={12} /> Back to profiles
+        </button>
+      )}
     </form>
   )
 }

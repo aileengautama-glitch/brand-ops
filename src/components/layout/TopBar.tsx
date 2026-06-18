@@ -8,7 +8,7 @@ import { useMagazineStore } from '@/store/useMagazineStore'
 import { useUserStore } from '@/store/useUserStore'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
-import UserSelector, { UserChip } from '@/components/auth/UserSelector'
+import { UserChip } from '@/components/auth/UserSelector'
 
 export default function TopBar() {
   const location = useLocation()
@@ -16,7 +16,6 @@ export default function TopBar() {
   const { id } = useParams()
   const [open, setOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [userSelectorOpen, setUserSelectorOpen] = useState(false)
   const [confirmClear, setConfirmClear] = useState<'events' | 'shoots' | 'magazine' | null>(null)
   const projectRef = useRef<HTMLDivElement>(null)
   const settingsRef = useRef<HTMLDivElement>(null)
@@ -218,7 +217,7 @@ export default function TopBar() {
 
         {/* Current user chip */}
         <div className="flex items-center">
-          <UserChip onClick={() => setUserSelectorOpen(true)} />
+          <UserChip />
         </div>
 
         <div className="flex items-center">
@@ -302,10 +301,6 @@ export default function TopBar() {
         onCancel={() => setConfirmClear(null)}
       />
 
-      <UserSelector
-        open={userSelectorOpen}
-        onClose={() => setUserSelectorOpen(false)}
-      />
     </>
   )
 }
