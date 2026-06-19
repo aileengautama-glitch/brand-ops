@@ -1,14 +1,15 @@
-import { useRef, useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Navigate } from 'react-router-dom'
 import { ShieldCheck, KeyRound, CheckCircle2, AlertCircle, Lock, Plus, Trash2, UserPlus, Send, Mail } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { useUserStore } from '@/store/useUserStore'
+import { useAuthStore } from '@/store/useAuthStore'
 import { useEventStore } from '@/store/useEventStore'
 import { useShootStore } from '@/store/useShootStore'
 import { useMagazineStore } from '@/store/useMagazineStore'
 import { isSupabaseEnabled } from '@/lib/supabase'
-import { inviteByEmail } from '@/lib/supabaseAuth'
+import { inviteByEmail, setPassword } from '@/lib/supabaseAuth'
 import { PeopleRepository } from '@/repositories'
 import { supabaseDeleteCustomMember } from '@/repositories/people'
 import { APP_USERS, ROLE_LABELS } from '@/auth/users'
@@ -21,135 +22,35 @@ import { UserAvatar } from '@/components/auth/UserSelector'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import PageHeader from '@/components/layout/PageHeader'
 
-// ─── Controlled 4-digit PIN boxes ────────────────────────────────────────────
-// Unlike PinEntry (login), these don't auto-submit — the parent form controls when
-// to validate. Parent owns the string value; this component just renders the boxes.
+// ─── Account password section (Supabase accounts) ────────────────────────────
+// Set or change the signed-in user's Supabase password. Replaces the old local PIN
+// flow — a member who first signed in via a magic link can set a password here and
+// then sign in with email + password.
 
-function PinBoxes({
-  value,
-  onChange,
-  error = false,
-  autoFocus = false,
-}: {
-  value: string
-  onChange: (v: string) => void
-  error?: boolean
-  autoFocus?: boolean
-}) {
-  const r0 = useRef<HTMLInputElement>(null)
-  const r1 = useRef<HTMLInputElement>(null)
-  const r2 = useRef<HTMLInputElement>(null)
-  const r3 = useRef<HTMLInputElement>(null)
-  const refs = [r0, r1, r2, r3]
-
-  const digits = Array.from({ length: 4 }, (_, i) => value[i] ?? '')
-
-  const handleChange = (i: number, v: string) => {
-    if (!/^\d?$/.test(v)) return
-    const next = [...digits]
-    next[i] = v
-    onChange(next.join(''))
-    if (v && i < 3) refs[i + 1].current?.focus()
-  }
-
-  const handleKeyDown = (i: number, e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace' && !digits[i] && i > 0) refs[i - 1].current?.focus()
-  }
-
-  return (
-    <div className="flex gap-2">
-      {digits.map((d, i) => (
-        <input
-          key={i}
-          ref={refs[i]}
-          type="password"
-          inputMode="numeric"
-          maxLength={1}
-          value={d}
-          autoFocus={autoFocus && i === 0}
-          onChange={(e) => handleChange(i, e.target.value)}
-          onKeyDown={(e) => handleKeyDown(i, e)}
-          className={cn(
-            'w-11 h-11 text-center text-lg font-bold border rounded-lg bg-white focus:outline-none transition-colors',
-            error
-              ? 'border-red-400 bg-red-50'
-              : 'border-surface-3 focus:border-accent'
-          )}
-        />
-      ))}
-    </div>
-  )
-}
-
-// ─── PIN field label row ──────────────────────────────────────────────────────
-
-function PinRow({
-  label,
-  value,
-  onChange,
-  error,
-  autoFocus,
-}: {
-  label: string
-  value: string
-  onChange: (v: string) => void
-  error?: boolean
-  autoFocus?: boolean
-}) {
-  return (
-    <div className="flex items-center justify-between gap-4">
-      <label className="text-sm text-ink-muted w-36 shrink-0">{label}</label>
-      <PinBoxes value={value} onChange={onChange} error={error} autoFocus={autoFocus} />
-    </div>
-  )
-}
-
-// ─── Change PIN section (all logged-in users) ─────────────────────────────────
-
-type PinStatus = 'idle' | 'success' | 'wrong-current' | 'mismatch' | 'too-short'
-
-function ChangePinSection() {
+function PasswordSection() {
   const { user } = useCurrentUser()
-  const getEffectivePin = useUserStore((s) => s.getEffectivePin)
-  const setPinOverride  = useUserStore((s) => s.setPinOverride)
+  const authStatus = useAuthStore((s) => s.status)
 
-  const [current, setCurrent]     = useState('')
-  const [newPin, setNewPin]       = useState('')
-  const [confirm, setConfirm]     = useState('')
-  const [status, setStatus]       = useState<PinStatus>('idle')
+  const [newPw, setNewPw]     = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [busy, setBusy]       = useState(false)
+  const [result, setResult]   = useState<{ ok: boolean; msg: string } | null>(null)
 
-  if (!user) return null
+  // Password is a Supabase concept — only relevant for a signed-in account.
+  if (authStatus !== 'signedIn' || !user) return null
 
-  const allFilled = current.length === 4 && newPin.length === 4 && confirm.length === 4
-
-  const handleSubmit = () => {
-    if (!allFilled) { setStatus('too-short'); return }
-    if (!/^\d{4}$/.test(current) || !/^\d{4}$/.test(newPin) || !/^\d{4}$/.test(confirm)) {
-      setStatus('too-short'); return
+  const handleSubmit = async () => {
+    if (newPw.length < 6) { setResult({ ok: false, msg: 'Password must be at least 6 characters.' }); return }
+    if (newPw !== confirm) { setResult({ ok: false, msg: 'Passwords don’t match.' }); return }
+    setBusy(true); setResult(null)
+    const r = await setPassword(newPw)
+    setBusy(false)
+    if (r.ok) {
+      setResult({ ok: true, msg: 'Password saved. You can now sign in with email + password.' })
+      setNewPw(''); setConfirm('')
+    } else {
+      setResult({ ok: false, msg: r.error ?? 'Could not save password.' })
     }
-    if (current !== getEffectivePin(user.id)) {
-      setStatus('wrong-current')
-      setCurrent('')
-      return
-    }
-    if (newPin !== confirm) {
-      setStatus('mismatch')
-      setNewPin('')
-      setConfirm('')
-      return
-    }
-    setPinOverride(user.id, newPin)
-    setStatus('success')
-    setCurrent('')
-    setNewPin('')
-    setConfirm('')
-  }
-
-  const reset = () => {
-    setStatus('idle')
-    setCurrent('')
-    setNewPin('')
-    setConfirm('')
   }
 
   return (
@@ -169,75 +70,41 @@ function ChangePinSection() {
           </div>
         </div>
 
-        {/* Change PIN form */}
-        <div className="space-y-1">
-          <p className="text-sm font-medium text-ink mb-3">Change PIN</p>
-
-          <div className="space-y-3">
-            <PinRow
-              label="Current PIN"
-              value={current}
-              onChange={(v) => { setCurrent(v); if (status !== 'idle') setStatus('idle') }}
-              error={status === 'wrong-current'}
-              autoFocus
-            />
-            {status === 'wrong-current' && (
-              <p className="text-xs text-red-500 ml-40 flex items-center gap-1">
-                <AlertCircle size={11} /> Incorrect PIN — try again
-              </p>
-            )}
-
-            <PinRow
-              label="New PIN"
-              value={newPin}
-              onChange={(v) => { setNewPin(v); if (status !== 'idle') setStatus('idle') }}
-              error={status === 'mismatch'}
-            />
-
-            <PinRow
-              label="Confirm new PIN"
-              value={confirm}
-              onChange={(v) => { setConfirm(v); if (status !== 'idle') setStatus('idle') }}
-              error={status === 'mismatch'}
-            />
-            {status === 'mismatch' && (
-              <p className="text-xs text-red-500 ml-40 flex items-center gap-1">
-                <AlertCircle size={11} /> PINs don't match
-              </p>
-            )}
-            {status === 'too-short' && (
-              <p className="text-xs text-red-500 ml-40 flex items-center gap-1">
-                <AlertCircle size={11} /> All PINs must be exactly 4 digits
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center gap-3 pt-1">
-          {status === 'success' ? (
-            <p className="flex items-center gap-1.5 text-sm text-green-600 font-medium">
-              <CheckCircle2 size={14} /> PIN updated successfully
+        {/* Set / change password */}
+        <div className="space-y-3">
+          <div>
+            <p className="text-sm font-medium text-ink">Set or change password</p>
+            <p className="text-xs text-ink-muted mt-0.5">
+              Set a password so you can sign in with email + password — handy if a magic link isn&rsquo;t available.
             </p>
-          ) : (
-            <>
-              <button
-                onClick={handleSubmit}
-                disabled={!allFilled}
-                className="px-4 py-1.5 bg-accent text-white text-sm rounded hover:bg-accent-dark disabled:opacity-40 transition-colors"
-              >
-                Change PIN
-              </button>
-              {(current || newPin || confirm) && (
-                <button
-                  onClick={reset}
-                  className="text-sm text-ink-faint hover:text-ink transition-colors"
-                >
-                  Clear
-                </button>
-              )}
-            </>
+          </div>
+
+          <input
+            type="password" value={newPw}
+            onChange={(e) => { setNewPw(e.target.value); if (result) setResult(null) }}
+            placeholder="New password (min 6 characters)" autoComplete="new-password"
+            className="w-full sm:max-w-xs px-3 py-1.5 text-sm border border-surface-3 rounded bg-white focus:outline-none focus:border-accent placeholder:text-ink-faint"
+          />
+          <input
+            type="password" value={confirm}
+            onChange={(e) => { setConfirm(e.target.value); if (result) setResult(null) }}
+            placeholder="Confirm password" autoComplete="new-password"
+            className="w-full sm:max-w-xs px-3 py-1.5 text-sm border border-surface-3 rounded bg-white focus:outline-none focus:border-accent placeholder:text-ink-faint"
+          />
+
+          {result && (
+            <p className={cn('text-xs flex items-center gap-1', result.ok ? 'text-green-600' : 'text-red-500')}>
+              {result.ok ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />} {result.msg}
+            </p>
           )}
+
+          <button
+            onClick={handleSubmit}
+            disabled={busy || newPw.length < 6 || newPw !== confirm}
+            className="px-4 py-1.5 bg-accent text-white text-sm rounded hover:bg-accent-dark disabled:opacity-40 transition-colors"
+          >
+            {busy ? 'Saving…' : 'Save password'}
+          </button>
         </div>
       </div>
     </div>
@@ -930,8 +797,8 @@ export default function Settings() {
         subtitle="Manage your personal account and, if you're admin, team access."
       />
 
-      {/* Part 1 — Personal PIN (all users) */}
-      <ChangePinSection />
+      {/* Part 1 — Account password (Supabase accounts) */}
+      <PasswordSection />
 
       {/* Part 2 — Admins & Module Access (admin only) */}
       {isAdmin && <TeamAccessSection />}
