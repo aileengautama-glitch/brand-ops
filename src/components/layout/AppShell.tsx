@@ -2,7 +2,9 @@ import { Outlet } from 'react-router-dom'
 import TopBar from './TopBar'
 import Sidebar from './Sidebar'
 import LoginGate from '@/components/auth/LoginGate'
+import RecoveryPrompt from '@/components/auth/RecoveryPrompt'
 import { useUserStore } from '@/store/useUserStore'
+import { useAuthStore } from '@/store/useAuthStore'
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth'
 import { useAuthBridge } from '@/hooks/useAuthBridge'
 import { useRemoteIdentityHydration } from '@/hooks/useRemoteIdentityHydration'
@@ -38,6 +40,7 @@ export default function AppShell() {
   const currentUserId = useUserStore((s) => s.currentUserId)
   const guestMode     = useUserStore((s) => s.guestMode)
   const isLoggedIn    = currentUserId !== null
+  const recovery      = useAuthStore((s) => s.recovery)
 
   // Phase 6A: Supabase Auth session foundation — restores/subscribes the auth session
   // and reconciles the auth user → people row (read-only). No-op when Supabase is absent;
@@ -161,6 +164,9 @@ export default function AppShell() {
     <div className="flex flex-col h-screen overflow-hidden bg-base">
       {/* Login gate — shown when no user is selected and not in guest mode */}
       {!isLoggedIn && !guestMode && <LoginGate />}
+
+      {/* Forgot-password recovery — set a new password after arriving via a reset link */}
+      {recovery && <RecoveryPrompt />}
 
       <TopBar />
       <div className="app-shell-inner flex flex-1 overflow-hidden">

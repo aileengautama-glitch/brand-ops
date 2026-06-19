@@ -36,10 +36,14 @@ interface AuthState {
   /** people.id reconciled from the auth user (read-only); null until auth_user_id is linked. */
   linkedPersonId: string | null
   error: string | null
+  /** True while in a "forgot password" recovery session (PASSWORD_RECOVERY) — show RecoveryPrompt. */
+  recovery: boolean
   /** Restore the session + subscribe to changes. Returns an unsubscribe. Called once from AppShell. */
   init: () => () => void
   signIn: (email: string, password: string) => Promise<boolean>
   signOut: () => Promise<void>
+  /** Clear the recovery flag after the user sets a new password. */
+  clearRecovery: () => void
 }
 
 // Best-effort, READ-ONLY reconciliation: auth user → app people row.
@@ -61,6 +65,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   authUser: null,
   linkedPersonId: null,
   error: null,
+  recovery: false,
 
   init: () => {
     if (!isSupabaseEnabled) {
@@ -68,10 +73,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return () => {}
     }
 
-    const apply = async (session: Session | null) => {
+    const apply = async (session: Session | null, event?: string) => {
+      if (event === 'PASSWORD_RECOVERY') set({ recovery: true })
       const authUser = toAuthUserLite(session?.user ?? null)
       if (!authUser) {
-        set({ status: 'signedOut', authUser: null, linkedPersonId: null })
+        set({ status: 'signedOut', authUser: null, linkedPersonId: null, recovery: false })
         return
       }
       set({ status: 'signedIn', authUser, error: null })
@@ -97,4 +103,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signOut: async () => {
     await sbSignOut() // onAuthChange → apply() sets signedOut
   },
+
+  clearRecovery: () => set({ recovery: false }),
 }))

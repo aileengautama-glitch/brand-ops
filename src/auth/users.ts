@@ -72,19 +72,10 @@ export const DEFAULT_PIN = '0000'
 
 export const APP_USERS: AppUser[] = [
   // ── Admin (workspace owner) ──────────────────────────────────────────────
+  // The built-in demo roster (Sarah Chen, Marcus Williams, …) was removed — they were
+  // seed people, not real users. Real collaborators are added via Settings → People &
+  // Invites (invited by email) and resolve through Supabase, not this static list.
   { id: 'user-aileen', name: 'Aileen', role: 'producer', initials: 'A', avatarColor: '#2C4A3E', isAdmin: true, pin: DEFAULT_PIN },
-
-  // ── Events team ───────────────────────────────────────────────────────────
-  { id: 'user-sarah-chen',      name: 'Sarah Chen',      role: 'producer',     initials: 'SC', avatarColor: '#566246', pin: DEFAULT_PIN },
-  { id: 'user-marcus-williams', name: 'Marcus Williams', role: 'art_director', initials: 'MW', avatarColor: '#4A5568', pin: DEFAULT_PIN },
-  { id: 'user-priya-patel',     name: 'Priya Patel',     role: 'producer',     initials: 'PP', avatarColor: '#7A5C52', pin: DEFAULT_PIN },
-  { id: 'user-tom-anderson',    name: 'Tom Anderson',    role: 'retail_lead',  initials: 'TA', avatarColor: '#2C4A3E', pin: DEFAULT_PIN },
-  { id: 'user-leila-rodriguez', name: 'Leila Rodriguez', role: 'assistant',    initials: 'LR', avatarColor: '#6B5E4F', pin: DEFAULT_PIN },
-  // ── Shoot crew ────────────────────────────────────────────────────────────
-  { id: 'user-yuki-tanaka',     name: 'Yuki Tanaka',     role: 'art_director', initials: 'YT', avatarColor: '#1C3D2E', pin: DEFAULT_PIN },
-  { id: 'user-marco-rossi',     name: 'Marco Rossi',     role: 'art_director', initials: 'MR', avatarColor: '#1C1C1E', pin: DEFAULT_PIN },
-  { id: 'user-amara-osei',      name: 'Amara Osei',      role: 'stylist',      initials: 'AO', avatarColor: '#8B5C4A', pin: DEFAULT_PIN },
-  { id: 'user-jade-kim',        name: 'Jade Kim',        role: 'hmu',          initials: 'JK', avatarColor: '#A0784C', pin: DEFAULT_PIN },
 ]
 
 export function getUserById(id: string): AppUser | undefined {

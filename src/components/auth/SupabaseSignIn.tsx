@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { LogOut, ArrowLeft } from 'lucide-react'
 import { useAuthStore } from '@/store/useAuthStore'
 import { signOutEverywhere } from '@/lib/authActions'
-import { sendSignInLink } from '@/lib/supabaseAuth'
+import { sendSignInLink, sendPasswordReset } from '@/lib/supabaseAuth'
 
 /**
  * SupabaseSignIn — Phase 6D email/password sign-in, rendered additively inside LoginGate.
@@ -23,6 +23,8 @@ export default function SupabaseSignIn({ onBack }: { onBack?: () => void }) {
   const [submitting, setSubmitting] = useState(false)
   const [linkState, setLinkState]   = useState<'idle' | 'sending' | 'sent'>('idle')
   const [linkError, setLinkError]   = useState<string | null>(null)
+  const [resetState, setResetState] = useState<'idle' | 'sending' | 'sent'>('idle')
+  const [resetError, setResetError] = useState<string | null>(null)
 
   // Signed in, but not reconciled to a workspace profile → clear dead-end (no bridge).
   if (status === 'signedIn' && !linkedPersonId) {
@@ -58,6 +60,14 @@ export default function SupabaseSignIn({ onBack }: { onBack?: () => void }) {
     const r = await sendSignInLink(email.trim())
     if (r.ok) setLinkState('sent')
     else { setLinkState('idle'); setLinkError(r.error ?? 'Could not send a sign-in link') }
+  }
+
+  const handleReset = async () => {
+    if (!email.trim() || resetState === 'sending') return
+    setResetState('sending'); setResetError(null)
+    const r = await sendPasswordReset(email.trim())
+    if (r.ok) setResetState('sent')
+    else { setResetState('idle'); setResetError(r.error ?? 'Could not send a reset link') }
   }
 
   return (
@@ -99,6 +109,20 @@ export default function SupabaseSignIn({ onBack }: { onBack?: () => void }) {
         </button>
       )}
       {linkError && <p className="text-xs text-center text-red-500">{linkError}</p>}
+
+      {/* Forgot password — sends a reset email; the link then prompts for a new password. */}
+      {resetState === 'sent' ? (
+        <p className="text-xs text-center text-ink-muted">Password reset link sent to {email.trim()}.</p>
+      ) : (
+        <button
+          type="button" onClick={handleReset}
+          disabled={!email.trim() || resetState === 'sending'}
+          className="w-full text-xs text-ink-faint hover:text-ink-muted transition-colors disabled:opacity-40"
+        >
+          {resetState === 'sending' ? 'Sending…' : 'Forgot your password?'}
+        </button>
+      )}
+      {resetError && <p className="text-xs text-center text-red-500">{resetError}</p>}
 
       {onBack && (
         <button

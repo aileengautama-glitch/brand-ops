@@ -29,9 +29,9 @@ export async function getSession(): Promise<Session | null> {
 }
 
 /** Subscribe to auth-state changes. Returns an unsubscribe (no-op when Supabase is off). */
-export function onAuthChange(cb: (session: Session | null) => void): () => void {
+export function onAuthChange(cb: (session: Session | null, event?: string) => void): () => void {
   if (!supabase) return () => {}
-  const { data } = supabase.auth.onAuthStateChange((_event, session) => cb(session))
+  const { data } = supabase.auth.onAuthStateChange((event, session) => cb(session, event))
   return () => data.subscription.unsubscribe()
 }
 
@@ -104,6 +104,23 @@ export async function setPassword(password: string): Promise<{ ok: boolean; erro
   if (!supabase) return { ok: false, error: 'Supabase is not configured' }
   const { error } = await supabase.auth.updateUser({ password })
   if (error) { console.warn('[Auth] set password failed:', error.message); return { ok: false, error: error.message } }
+  return { ok: true }
+}
+
+/**
+ * Send a "reset your password" email (forgot-password flow). The link establishes a
+ * recovery session and fires a PASSWORD_RECOVERY auth event; the app then prompts for a
+ * new password. Used from the gate's "Forgot your password?" link.
+ */
+export async function sendPasswordReset(
+  email: string,
+  redirectTo?: string,
+): Promise<{ ok: boolean; error?: string }> {
+  if (!supabase) return { ok: false, error: 'Supabase is not configured' }
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: redirectTo ?? window.location.origin,
+  })
+  if (error) { console.warn('[Auth] password reset failed:', error.message); return { ok: false, error: error.message } }
   return { ok: true }
 }
 
