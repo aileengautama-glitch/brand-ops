@@ -95,6 +95,18 @@ export async function sendSignInLink(
   return { ok: true }
 }
 
+/**
+ * Set (or change) the signed-in user's password. Lets a member who first signed in via a
+ * magic link (no password) set one, so they can sign in with email + password next time.
+ * Requires an active session — Supabase authorizes via the session, no current password needed.
+ */
+export async function setPassword(password: string): Promise<{ ok: boolean; error?: string }> {
+  if (!supabase) return { ok: false, error: 'Supabase is not configured' }
+  const { error } = await supabase.auth.updateUser({ password })
+  if (error) { console.warn('[Auth] set password failed:', error.message); return { ok: false, error: error.message } }
+  return { ok: true }
+}
+
 /** Sign out. onAuthStateChange fires → store resets to signedOut. */
 export async function signOut(): Promise<void> {
   if (!supabase) return
