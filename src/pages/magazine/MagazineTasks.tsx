@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { Plus, CheckSquare, ChevronDown, ChevronUp, Trash2, PenLine, Image, Layers, BookOpen } from 'lucide-react'
 import { useMagazineStore } from '@/store/useMagazineStore'
+import { useUserStore } from '@/store/useUserStore'
+import { buildDirectory } from '@/auth/members'
 import { MagazineTaskRepository } from '@/repositories'
 import { useCurrentMagazineProject } from '@/hooks/useCurrentProject'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
@@ -317,9 +319,24 @@ export default function MagazineTasks() {
     return () => { cancelled = true }
   }, [id])
 
+  // Assignable team = this project's collaborators: people granted access to this magazine
+  // project, plus admins. (project.teamMembers has no editable UI, so it's empty for new
+  // projects.) Unioned with any seeded teamMembers so existing seed projects keep their roster.
+  const customMembers = useUserStore((s) => s.customMembers)
+  const accessGrants  = useUserStore((s) => s.accessGrants)
+  const members: Member[] = useMemo(() => {
+    const seed = (project?.teamMembers ?? []).map((m) => ({ id: m.id, name: m.name }))
+    const team = !id ? [] : buildDirectory(customMembers)
+      .filter((p) => p.isAdmin || (accessGrants[p.id] ?? []).some(
+        (g) => g.module === 'magazine' && g.projectId === id))
+      .map((p) => ({ id: p.id, name: p.name }))
+    const byId = new Map<string, Member>()
+    for (const m of [...seed, ...team]) byId.set(m.id, m)
+    return [...byId.values()]
+  }, [id, project?.teamMembers, customMembers, accessGrants])
+
   if (!project || !id) return <div className="p-6 text-sm text-ink-muted">Project not found.</div>
 
-  const members  = project.teamMembers ?? []
   // Read authority: Supabase rows when present, else the local store copy. Until the
   // table is populated by the dual-write, this falls back to local (no behavior change).
   // teamMembers (lookup) stays on the store — out of scope for this slice.
