@@ -39,6 +39,15 @@ interface MagazineStoreState {
    */
   hydrateProjectSummaries: (summaries: MagazineProjectSummary[]) => void
 
+  /**
+   * Cross-device: add remote-only VIEWABLE magazine projects (RLS-scoped) into the local
+   * store as shells, so a member on a fresh device can see the Magazine card and open a
+   * project they didn't create. Skips any project already local (never overwrites — the
+   * protective hydrateProjectSummaries gate is untouched). Content arrays start empty; the
+   * per-page content reads (remote ?? local) fill them. Pure/local.
+   */
+  upsertRemoteMagazineProjects: (summaries: MagazineProjectSummary[]) => void
+
   // ── Articles (Writing) ──────────────────────────────────────────────────────
   addArticle: (projectId: string) => void
   updateArticle: (projectId: string, id: string, patch: Partial<Article>) => void
@@ -436,6 +445,27 @@ export const useMagazineStore = create<MagazineStoreState>()(
           // Write only when something actually changed → no spurious notify / persist /
           // write-sync echo when local already matches remote (the clean-gate case).
           if (changed) set({ projects: next })
+        },
+
+        upsertRemoteMagazineProjects: (summaries) => {
+          const have = new Set(get().projects.map((p) => p.id))
+          const add = summaries
+            .filter((sm) => !have.has(sm.id))
+            .map((sm) => ({
+              ...createDefaultMagazineProject(sm.name, sm.description),
+              id:              sm.id,
+              name:            sm.name,
+              description:     sm.description,
+              editionNumber:   sm.editionNumber,
+              publicationDate: sm.publicationDate,
+              theme:           sm.theme,
+              status:          sm.status,
+              totalBudget:     sm.totalBudget,
+              notes:           sm.notes,
+              createdAt:       sm.createdAt,
+              updatedAt:       sm.updatedAt,
+            }))
+          if (add.length) set((st) => ({ projects: [...st.projects, ...add] }))
         },
 
         // ── Articles ───────────────────────────────────────────────────────────

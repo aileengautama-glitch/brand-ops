@@ -23,6 +23,7 @@ import { useMagazineProjectSync } from '@/hooks/useMagazineProjectSync'
 import { useMagazineGrantSync }   from '@/hooks/useMagazineGrantSync'
 import { useCustomMemberSync }    from '@/hooks/useCustomMemberSync'
 import { useMagazineProjectHydration } from '@/hooks/useMagazineProjectHydration'
+import { useMagazineMemberHydration } from '@/hooks/useMagazineMemberHydration'
 import { useMagazineOutreachSync } from '@/hooks/useMagazineOutreachSync'
 import { useMagazineSpreadSync }   from '@/hooks/useMagazineSpreadSync'
 import { useMagazineGraphicSync }  from '@/hooks/useMagazineGraphicSync'
@@ -108,6 +109,10 @@ export default function AppShell() {
   // unexpected drift; otherwise the local store stays authoritative. Content arrays
   // are always preserved. Supersedes the standalone Phase 5A mount.
   useMagazineProjectHydration()
+
+  // Cross-device: pull the signed-in user's VIEWABLE magazine projects into the local store
+  // as shells, so a member on a fresh device can see the Magazine card + open shared projects.
+  useMagazineMemberHydration()
 
   // Phase 5D: dual-write magazine outreach contacts to Supabase (magazine_outreach).
   // Best-effort; the local store stays authoritative. FK on projects(id) self-heals

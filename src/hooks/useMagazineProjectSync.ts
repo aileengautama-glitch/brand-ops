@@ -19,6 +19,8 @@
  */
 import { useEffect } from 'react'
 import { useMagazineStore } from '@/store/useMagazineStore'
+import { useUserStore } from '@/store/useUserStore'
+import { isAdminUser } from '@/auth/users'
 import { isSupabaseEnabled } from '@/lib/supabase'
 import {
   supabasePushMagazineProject,
@@ -59,6 +61,8 @@ export function useMagazineProjectSync(): void {
     // ── 1. Initial push: local → remote for any UUID project not yet in Supabase ──
     // upsert with ignoreDuplicates=true means already-synced projects are skipped.
     void (async () => {
+      const uid = useUserStore.getState().currentUserId
+      if (!uid || !isAdminUser(uid)) return // only admins manage magazine projects (RLS); members never push
       for (const p of useMagazineStore.getState().projects) {
         await supabasePushMagazineProject(p)
       }
@@ -69,6 +73,8 @@ export function useMagazineProjectSync(): void {
     // set() call.  We start async Supabase writes immediately (fire-and-forget)
     // so the delay between local write and remote write is one microtask.
     const unsub = useMagazineStore.subscribe((state, prevState) => {
+      const uid = useUserStore.getState().currentUserId
+      if (!uid || !isAdminUser(uid)) return // skip on member devices (hydrated shells would RLS-deny)
       const next = state.projects
       const prev = prevState.projects
 
