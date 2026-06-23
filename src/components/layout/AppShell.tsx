@@ -166,7 +166,7 @@ export default function AppShell() {
   useMagazineArticleCommentSync()
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-base">
+    <div className="print-shell-root flex flex-col h-screen overflow-hidden bg-base">
       {/* Login gate — shown when no user is selected and not in guest mode */}
       {!isLoggedIn && !guestMode && <LoginGate />}
 

@@ -25,6 +25,16 @@
     background: white !important;
   }
 
+  /* Shell roots (AppShell + ShareShell) pin themselves to h-screen + overflow
+     (hidden in-app / auto on /share) so the app scrolls internally. In print that
+     fixed 100vh height clips the output to a single page — release it so multi-page
+     artefacts (e.g. the brief deck) paginate fully instead of printing one page. */
+  .print-shell-root {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
   /* Flatten the sidebar+main flex row so content fills full width */
   .app-shell-inner {
     display: block !important;

@@ -10,7 +10,7 @@ import { Outlet } from 'react-router-dom'
  */
 export default function ShareShell() {
   return (
-    <div className="h-screen overflow-y-auto bg-base">
+    <div className="print-shell-root h-screen overflow-y-auto bg-base">
       <Outlet />
     </div>
   )
