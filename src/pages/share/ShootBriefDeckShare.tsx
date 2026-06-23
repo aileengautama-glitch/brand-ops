@@ -20,7 +20,7 @@ import ShootDeckDocument from '@/components/deck/ShootDeckDocument'
 export default function ShootBriefDeckShare() {
   const { id } = useParams<{ id: string }>()
   const localProject = useShootStore((s) => s.projects.find((p) => p.id === id))
-  const triggerPrint = usePrint('landscape')
+  const triggerPrint = usePrint('portrait')
 
   // This route mounts under ShareShell (outside AppShell), so it doesn't inherit
   // useMediaSync / project structure. Hydrate the media cache and fetch the remote
@@ -46,7 +46,7 @@ export default function ShootBriefDeckShare() {
   }
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
+    <div className="print-page-wrapper p-8 max-w-5xl mx-auto">
       {/* Share header — hidden when printing */}
       <div className="flex items-center justify-between mb-8 no-print pb-4 border-b border-surface-3">
         <div className="flex items-center gap-2">

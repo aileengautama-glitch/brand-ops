@@ -2,118 +2,96 @@
  * ShootDeckDocument — the single source of truth for the Shoot Brief Deck layout.
  *
  * Pure presentational: renders a ShootDeckData view-model (built from a local project
- * OR a remote deck snapshot — see lib/deckSnapshot.ts). Used by the public share/export
- * route so the template lives in ONE place instead of being copy-pasted per surface.
+ * OR a remote deck snapshot — see lib/deckSnapshot.ts). Used by the in-app deck page
+ * AND the public share/export route, so the template lives in ONE place.
  *
- * Images resolve via useStoredImage (IndexedDB on the authoring device, Supabase public
- * URLs on a fresh/headless device once the media cache is hydrated). That keeps this
- * component renderable both client-side and, later, by a headless browser for server PDF.
+ * Layout = explicit A4 **portrait** page blocks (.deck-page). On screen each page is a
+ * centered card (true 210×297mm) → a faithful page-by-page preview of the export. In
+ * print, print.css strips the card chrome and forces one printed A4 page per block.
+ * Images resolve via useStoredImage (IndexedDB on the authoring device; Supabase public
+ * URLs on a fresh/headless device) so the same document is renderable for a future
+ * server-side (Puppeteer) PDF without changes.
  *
- * Section order tracks the supplied brief-deck template:
- *   title/meta → moodboard → brief text + shot list + schedule → shot list & references
- *   → crew → models
+ * Page order tracks the supplied brief-deck template:
+ *   1 Cover — title/meta · moodboard · overview · notes
+ *   2 Creative — creative direction · styling · hair & make-up · location
+ *   3 Schedule & Shot List — brief day schedule (w/ duration) · concept shot list
+ *   4 Shot List & References — scheduled shots with imagery
+ *   5 Crew & Models
  */
+import type { ReactNode } from 'react'
 import { useStoredImage } from '@/hooks/useImageStorage'
 import { durationLabel, compareByTimeThenOrder } from '@/lib/timeUtils'
 import type { ShootDeckData } from '@/lib/deckSnapshot'
 import type { Model, Shot, DDayTimelineRow, Styling } from '@/types/shoot'
 import type { MoodboardItem, DayOfSlot } from '@/types/common'
 
-const BRIEF_SECTIONS = [
-  { key: 'overview',          label: 'Overview' },
-  { key: 'creativeDirection', label: 'Creative Direction' },
-  { key: 'wardrobe',          label: 'Styling' },
-  { key: 'hairAndMakeup',     label: 'Hair & Make-Up' },
-  { key: 'locations',         label: 'Location' },
-  { key: 'additionalNotes',   label: 'Notes' },
-] as const
+const H2 = 'text-2xs font-bold uppercase tracking-[0.14em] text-ink-faint mb-3'
 
 export default function ShootDeckDocument({ data }: { data: ShootDeckData }) {
   const bd = data.briefDetails
+  const sb = data.shootBrief
   const moodboard = [...data.briefMoodboardItems].sort((a, b) => a.order - b.order)
   const slots = [...data.dayOfSlots].sort(compareByTimeThenOrder)
   const shots = [...data.shots].sort((a, b) => a.order - b.order)
   const ddays = [...(data.ddayRows ?? [])].sort(compareByTimeThenOrder)
   const stylings = data.stylings ?? []
+  const wardrobeImages = data.wardrobeImages ?? []
+  const hmuImages = data.hairAndMakeupImages ?? []
+
+  const hasCreative =
+    !!sb.creativeDirection || !!sb.wardrobe || wardrobeImages.length > 0 ||
+    !!sb.hairAndMakeup || hmuImages.length > 0 || !!sb.locations
+  const hasSchedule = slots.length > 0 || shots.length > 0
+  const hasCrewModels = data.crewMembers.length > 0 || data.models.length > 0
 
   return (
-    <div className="print-area space-y-10">
-      {/* ── Title ─────────────────────────────────────────────────────── */}
-      <div className="border-b-2 border-ink pb-4 no-page-break">
-        <p className="text-2xs font-bold uppercase tracking-[0.2em] text-ink-faint mb-1">Shoot Brief</p>
-        <h1 className="text-3xl font-bold text-ink">{data.name}</h1>
-        {data.description && <p className="text-sm text-ink-muted mt-1">{data.description}</p>}
-        <div className="flex flex-wrap gap-x-6 gap-y-1 mt-3">
-          {bd.shootType && <Meta label="Type" value={bd.shootType} />}
-          {bd.client && <Meta label="Collection" value={bd.client} />}
-          {bd.location && <Meta label="Location" value={bd.location} />}
-          {(bd.callTime || bd.wrapTime) && (
-            <Meta label="Call / Wrap" value={`${bd.callTime || '—'} → ${bd.wrapTime || '—'}`} />
-          )}
-        </div>
-      </div>
-
-      {/* ── Moodboard ─────────────────────────────────────────────────── */}
-      {moodboard.length > 0 && (
-        <section className="no-page-break">
-          <h2 className="text-2xs font-bold uppercase tracking-[0.14em] text-ink-faint mb-3">Moodboard</h2>
-          <div className="grid grid-cols-4 gap-3">
-            {moodboard.map((item) => <BriefImage key={item.id} item={item} />)}
+    <div className="print-area deck-doc">
+      {/* ── Page 1 — Cover ──────────────────────────────────────────────── */}
+      <DeckPage>
+        <div className="border-b-2 border-ink pb-4 mb-6">
+          <p className="text-2xs font-bold uppercase tracking-[0.2em] text-ink-faint mb-1">Shoot Brief</p>
+          <h1 className="text-3xl font-bold text-ink leading-tight">{data.name}</h1>
+          {data.description && <p className="text-sm text-ink-muted mt-1">{data.description}</p>}
+          <div className="flex flex-wrap gap-x-6 gap-y-1 mt-3">
+            {bd.shootType && <Meta label="Type" value={bd.shootType} />}
+            {bd.client && <Meta label="Collection" value={bd.client} />}
+            {bd.location && <Meta label="Location" value={bd.location} />}
+            {(bd.callTime || bd.wrapTime) && (
+              <Meta label="Call / Wrap" value={`${bd.callTime || '—'} → ${bd.wrapTime || '—'}`} />
+            )}
           </div>
-        </section>
+        </div>
+
+        {moodboard.length > 0 && (
+          <section className="no-page-break mb-6">
+            <h2 className={H2}>Moodboard</h2>
+            <div className="grid grid-cols-3 gap-3">
+              {moodboard.map((item) => <BriefImage key={item.id} item={item} />)}
+            </div>
+          </section>
+        )}
+
+        <BriefTextSection label="Overview" text={sb.overview} />
+        <BriefTextSection label="Notes" text={sb.additionalNotes} />
+      </DeckPage>
+
+      {/* ── Page 2 — Creative ───────────────────────────────────────────── */}
+      {hasCreative && (
+        <DeckPage>
+          <BriefTextSection label="Creative Direction" text={sb.creativeDirection} />
+          <BriefTextSection label="Styling" text={sb.wardrobe} images={wardrobeImages} />
+          <BriefTextSection label="Hair & Make-Up" text={sb.hairAndMakeup} images={hmuImages} />
+          <BriefTextSection label="Location" text={sb.locations} />
+        </DeckPage>
       )}
 
-      {/* ── Brief text + shot list + schedule ─────────────────────────── */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-x-12 gap-y-10">
-        {/* Left: brief text (Wardrobe & HMU also show reference images) */}
-        <div className="space-y-8">
-          {BRIEF_SECTIONS.filter(({ key }) => {
-            if (key === 'wardrobe')      return !!data.shootBrief[key] || (data.wardrobeImages?.length ?? 0) > 0
-            if (key === 'hairAndMakeup') return !!data.shootBrief[key] || (data.hairAndMakeupImages?.length ?? 0) > 0
-            return !!data.shootBrief[key]
-          }).map(({ key, label }) => {
-            const refImages =
-              key === 'wardrobe'      ? (data.wardrobeImages ?? []) :
-              key === 'hairAndMakeup' ? (data.hairAndMakeupImages ?? []) :
-              []
-            return (
-              <section key={key} className="no-page-break">
-                <h2 className="text-2xs font-bold uppercase tracking-[0.14em] text-ink-faint mb-3">{label}</h2>
-                {refImages.length > 0 && (
-                  <div className="grid grid-cols-3 gap-2 mb-3">
-                    {refImages.map((item) => <BriefImage key={item.id} item={item} />)}
-                  </div>
-                )}
-                {data.shootBrief[key] && (
-                  <p className="text-sm text-ink leading-relaxed whitespace-pre-wrap">{data.shootBrief[key]}</p>
-                )}
-              </section>
-            )
-          })}
-        </div>
-
-        {/* Right: concept shot list + brief day schedule */}
-        <div className="space-y-8">
-          {shots.length > 0 && (
-            <section className="no-page-break">
-              <h2 className="text-2xs font-bold uppercase tracking-[0.14em] text-ink-faint mb-3">Shot List</h2>
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="border-b-2 border-ink">
-                    <th className="text-left text-xs font-semibold text-ink py-1.5 pr-4 w-16">ID</th>
-                    <th className="text-left text-xs font-semibold text-ink py-1.5">Shot name</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {shots.map((shot) => <ShotRow key={shot.id} shot={shot} />)}
-                </tbody>
-              </table>
-            </section>
-          )}
-
+      {/* ── Page 3 — Schedule & Concept Shot List ───────────────────────── */}
+      {hasSchedule && (
+        <DeckPage>
           {slots.length > 0 && (
-            <section className="no-page-break">
-              <h2 className="text-2xs font-bold uppercase tracking-[0.14em] text-ink-faint mb-3">Brief Day Schedule</h2>
+            <section className="no-page-break mb-8">
+              <h2 className={H2}>Brief Day Schedule</h2>
               <table className="w-full text-sm border-collapse">
                 <thead>
                   <tr className="border-b-2 border-ink">
@@ -123,66 +101,109 @@ export default function ShootDeckDocument({ data }: { data: ShootDeckData }) {
                     <th className="text-left text-xs font-semibold text-ink py-1.5 w-28">PIC</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {slots.map((slot) => <SlotRow key={slot.id} slot={slot} />)}
-                </tbody>
+                <tbody>{slots.map((slot) => <SlotRow key={slot.id} slot={slot} />)}</tbody>
               </table>
             </section>
           )}
-        </div>
-      </div>
 
-      {/* ── Shot List & References — scheduled shots with imagery ──────── */}
+          {shots.length > 0 && (
+            <section className="no-page-break">
+              <h2 className={H2}>Shot List</h2>
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b-2 border-ink">
+                    <th className="text-left text-xs font-semibold text-ink py-1.5 pr-4 w-16">ID</th>
+                    <th className="text-left text-xs font-semibold text-ink py-1.5">Shot name</th>
+                  </tr>
+                </thead>
+                <tbody>{shots.map((shot) => <ShotRow key={shot.id} shot={shot} />)}</tbody>
+              </table>
+            </section>
+          )}
+        </DeckPage>
+      )}
+
+      {/* ── Page 4 — Shot List & References ─────────────────────────────── */}
       {ddays.length > 0 && (
-        <section className="no-page-break">
-          <h2 className="text-2xs font-bold uppercase tracking-[0.14em] text-ink-faint mb-3">Shot List &amp; References</h2>
+        <DeckPage>
+          <h2 className={H2}>Shot List &amp; References</h2>
           <div className="space-y-4">
             {ddays.map((row) => (
               <DDayDeckRow key={row.id} row={row} stylings={stylings} models={data.models} />
             ))}
           </div>
-        </section>
+        </DeckPage>
       )}
 
-      {/* ── Crew ──────────────────────────────────────────────────────── */}
-      {data.crewMembers.length > 0 && (
-        <section className="no-page-break">
-          <h2 className="text-2xs font-bold uppercase tracking-[0.14em] text-ink-faint mb-3">Crew</h2>
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr className="border-b-2 border-ink">
-                <th className="text-left text-xs font-semibold text-ink py-1.5 pr-4 w-40">Name</th>
-                <th className="text-left text-xs font-semibold text-ink py-1.5 pr-4 w-36">Role</th>
-                <th className="text-left text-xs font-semibold text-ink py-1.5">Contact</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.crewMembers.map((m) => (
-                <tr key={m.id}>
-                  <td className="py-1.5 pr-4 border-b border-surface-3 font-medium text-ink">{m.name}</td>
-                  <td className="py-1.5 pr-4 border-b border-surface-3 text-ink-muted">{m.role}</td>
-                  <td className="py-1.5 border-b border-surface-3 text-ink-faint text-xs">{m.contact || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-      )}
+      {/* ── Page 5 — Crew & Models ──────────────────────────────────────── */}
+      {hasCrewModels && (
+        <DeckPage>
+          {data.crewMembers.length > 0 && (
+            <section className="no-page-break mb-8">
+              <h2 className={H2}>Crew</h2>
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b-2 border-ink">
+                    <th className="text-left text-xs font-semibold text-ink py-1.5 pr-4 w-40">Name</th>
+                    <th className="text-left text-xs font-semibold text-ink py-1.5 pr-4 w-36">Role</th>
+                    <th className="text-left text-xs font-semibold text-ink py-1.5">Contact</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.crewMembers.map((m) => (
+                    <tr key={m.id}>
+                      <td className="py-1.5 pr-4 border-b border-surface-3 font-medium text-ink">{m.name}</td>
+                      <td className="py-1.5 pr-4 border-b border-surface-3 text-ink-muted">{m.role}</td>
+                      <td className="py-1.5 border-b border-surface-3 text-ink-faint text-xs">{m.contact || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          )}
 
-      {/* ── Models ────────────────────────────────────────────────────── */}
-      {data.models.length > 0 && (
-        <section>
-          <h2 className="text-2xs font-bold uppercase tracking-[0.14em] text-ink-faint mb-3">Models</h2>
-          <div className="grid grid-cols-4 gap-4">
-            {data.models.map((model) => <ModelCard key={model.id} model={model} />)}
-          </div>
-        </section>
+          {data.models.length > 0 && (
+            <section className="no-page-break">
+              <h2 className={H2}>Models</h2>
+              <div className="grid grid-cols-3 gap-4">
+                {data.models.map((model) => <ModelCard key={model.id} model={model} />)}
+              </div>
+            </section>
+          )}
+        </DeckPage>
       )}
     </div>
   )
 }
 
+// ─── Page wrapper ─────────────────────────────────────────────────────────────
+// Screen: a centered A4-portrait card (faithful preview). Print: print.css strips
+// the card chrome and forces one A4 page per block.
+
+function DeckPage({ children }: { children: ReactNode }) {
+  return (
+    <section className="deck-page w-[210mm] min-h-[297mm] mx-auto mb-[12mm] p-[16mm] bg-white shadow-lg">
+      {children}
+    </section>
+  )
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
+
+function BriefTextSection({ label, text, images }: { label: string; text?: string; images?: MoodboardItem[] }) {
+  if (!text && !(images && images.length > 0)) return null
+  return (
+    <section className="no-page-break mb-6">
+      <h2 className={H2}>{label}</h2>
+      {images && images.length > 0 && (
+        <div className="grid grid-cols-3 gap-2 mb-3">
+          {images.map((item) => <BriefImage key={item.id} item={item} />)}
+        </div>
+      )}
+      {text && <p className="text-sm text-ink leading-relaxed whitespace-pre-wrap">{text}</p>}
+    </section>
+  )
+}
 
 function Meta({ label, value }: { label: string; value: string }) {
   return (
@@ -249,7 +270,7 @@ function DDayDeckRow({ row, stylings, models }: { row: DDayTimelineRow; stylings
       </div>
       {row.notes && <p className="text-xs text-ink-muted mb-2 whitespace-pre-wrap">{row.notes}</p>}
       {imageIds.length > 0 && (
-        <div className="grid grid-cols-6 gap-2">
+        <div className="grid grid-cols-4 gap-2">
           {imageIds.map((iid, i) => <DeckRefThumb key={`${iid}-${i}`} imageId={iid} />)}
         </div>
       )}
