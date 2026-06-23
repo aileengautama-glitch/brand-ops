@@ -337,10 +337,14 @@ export default function MagazineTasks() {
 
   if (!project || !id) return <div className="p-6 text-sm text-ink-muted">Project not found.</div>
 
-  // Read authority: Supabase rows when present, else the local store copy. Until the
-  // table is populated by the dual-write, this falls back to local (no behavior change).
-  // teamMembers (lookup) stays on the store — out of scope for this slice.
-  const allTasks = remoteTasks ?? project.tasks ?? []
+  // Read authority: LOCAL-authoritative merge over the remote snapshot — local edits win
+  // by id, so a just-set due date / status reflects immediately (matching the My Tasks
+  // list + calendar, which read project.tasks). Remote-only tasks are still shown; pure
+  // local when there's no Supabase answer.
+  const localTasks = project.tasks ?? []
+  const allTasks: MagazineTask[] = remoteTasks
+    ? [...new Map([...remoteTasks, ...localTasks].map((t) => [t.id, t])).values()]
+    : localTasks
 
   const memberName = (mid: string) => members.find((m) => m.id === mid)?.name ?? ''
 
