@@ -42,6 +42,8 @@ export type ShootDeckData = Pick<
   | 'hairAndMakeupImages'
   | 'dayOfSlots'
   | 'shots'
+  | 'ddayRows'
+  | 'stylings'
   | 'crewMembers'
   | 'models'
 >
@@ -74,6 +76,8 @@ export function buildShootDeckData(p: ShootProject): ShootDeckData {
     hairAndMakeupImages: p.hairAndMakeupImages ?? [],
     dayOfSlots:          p.dayOfSlots,
     shots:               p.shots,
+    ddayRows:            p.ddayRows ?? [],
+    stylings:            p.stylings ?? [],
     crewMembers:         p.crewMembers,
     models:              p.models,
   }
