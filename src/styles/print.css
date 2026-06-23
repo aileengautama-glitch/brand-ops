@@ -85,19 +85,19 @@
   }
 
   /* ── Deck export — A4 page blocks ──────────────────────────────────────────
-     On screen .deck-page is a fixed 210×297mm card (faithful preview); in print
-     we strip the card chrome so each block maps to one printed page. The printed
-     page margin comes from @page (above), so page padding is zeroed here. */
+     The deck keeps its FIXED 210×297mm size + 14mm padding in print (same as the
+     on-screen card) so preview == PDF. Decks print with @page margin:0 (injected by
+     usePrint('portrait',{margin:'0'})), so each fixed page maps 1:1 onto the sheet.
+     We only strip the on-screen card chrome (gap + shadow) and force the page break. */
   .deck-page {
-    width: auto !important;
-    min-height: 0 !important;
-    max-width: none !important;
     margin: 0 !important;
-    padding: 0 !important;
     box-shadow: none !important;
     background: transparent !important;
+    overflow: hidden !important;
     page-break-after: always !important;
     break-after: page !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
   .deck-page:last-child {
     page-break-after: avoid !important;

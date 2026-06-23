@@ -5,19 +5,22 @@
  * OR a remote deck snapshot — see lib/deckSnapshot.ts). Used by the in-app deck page
  * AND the public share/export route, so the template lives in ONE place.
  *
- * Layout = explicit A4 **portrait** page blocks (.deck-page). On screen each page is a
- * centered card (true 210×297mm) → a faithful page-by-page preview of the export. In
- * print, print.css strips the card chrome and forces one printed A4 page per block.
- * Images resolve via useStoredImage (IndexedDB on the authoring device; Supabase public
- * URLs on a fresh/headless device) so the same document is renderable for a future
- * server-side (Puppeteer) PDF without changes.
+ * Layout = explicit A4 **portrait** page blocks (.deck-page), each a FIXED 210×297mm box
+ * with 14mm padding and overflow:hidden — identical on screen and in print. Decks print
+ * with @page margin:0 (usePrint('portrait',{margin:'0'})), so each card maps 1:1 onto a
+ * sheet → the on-screen preview equals the exported PDF (WYSIWYG). Headings use Tailwind's
+ * !important sizes so the global print typography overrides can't reflow them.
+ *
+ * NOTE: pages are fixed-height; content beyond one page is clipped (no auto-flow). Keep
+ * per-page content within a page — long lists are split where needed (references). True
+ * auto-flow across pages is the deferred Paged.js layer.
  *
  * Page order tracks the supplied brief-deck template:
  *   1 Cover — title/meta · moodboard · overview · notes
- *   2 Creative — creative direction · styling · hair & make-up · location
- *   3 Schedule & Shot List — brief day schedule (w/ duration) · concept shot list
- *   4 Shot List & References — scheduled shots with imagery
- *   5 Crew & Models
+ *   2 Crew & Models
+ *   3 Creative — creative direction · styling · hair & make-up · location
+ *   4 Schedule & Shot List — brief day schedule (w/ duration) · concept shot list
+ *   5 Shot List & References — scheduled shots with imagery (split across pages)
  */
 import type { ReactNode } from 'react'
 import { useStoredImage } from '@/hooks/useImageStorage'
@@ -26,7 +29,11 @@ import type { ShootDeckData } from '@/lib/deckSnapshot'
 import type { Model, Shot, DDayTimelineRow, Styling } from '@/types/shoot'
 import type { MoodboardItem, DayOfSlot } from '@/types/common'
 
-const H2 = 'text-2xs font-bold uppercase tracking-[0.14em] text-ink-faint mb-3'
+const H2 = '!text-2xs font-bold uppercase tracking-[0.14em] text-ink-faint mb-3'
+
+// References rows per A4 page (each row carries up to a few thumbnails). Keeps each
+// page within bounds so nothing is clipped and the preview matches the PDF.
+const REFS_PER_PAGE = 3
 
 export default function ShootDeckDocument({ data }: { data: ShootDeckData }) {
   const bd = data.briefDetails
@@ -44,14 +51,15 @@ export default function ShootDeckDocument({ data }: { data: ShootDeckData }) {
     !!sb.hairAndMakeup || hmuImages.length > 0 || !!sb.locations
   const hasSchedule = slots.length > 0 || shots.length > 0
   const hasCrewModels = data.crewMembers.length > 0 || data.models.length > 0
+  const ddayPages = chunk(ddays, REFS_PER_PAGE)
 
   return (
     <div className="print-area deck-doc">
       {/* ── Page 1 — Cover ──────────────────────────────────────────────── */}
       <DeckPage>
         <div className="border-b-2 border-ink pb-4 mb-6">
-          <p className="text-2xs font-bold uppercase tracking-[0.2em] text-ink-faint mb-1">Shoot Brief</p>
-          <h1 className="text-3xl font-bold text-ink leading-tight">{data.name}</h1>
+          <p className="!text-2xs font-bold uppercase tracking-[0.2em] text-ink-faint mb-1">Shoot Brief</p>
+          <h1 className="!text-3xl font-bold text-ink leading-tight">{data.name}</h1>
           {data.description && <p className="text-sm text-ink-muted mt-1">{data.description}</p>}
           <div className="flex flex-wrap gap-x-6 gap-y-1 mt-3">
             {bd.shootType && <Meta label="Type" value={bd.shootType} />}
@@ -67,7 +75,7 @@ export default function ShootDeckDocument({ data }: { data: ShootDeckData }) {
           <section className="no-page-break mb-6">
             <h2 className={H2}>Moodboard</h2>
             <div className="grid grid-cols-3 gap-3">
-              {moodboard.map((item) => <BriefImage key={item.id} item={item} />)}
+              {moodboard.slice(0, 6).map((item) => <BriefImage key={item.id} item={item} />)}
             </div>
           </section>
         )}
@@ -76,66 +84,7 @@ export default function ShootDeckDocument({ data }: { data: ShootDeckData }) {
         <BriefTextSection label="Notes" text={sb.additionalNotes} />
       </DeckPage>
 
-      {/* ── Page 2 — Creative ───────────────────────────────────────────── */}
-      {hasCreative && (
-        <DeckPage>
-          <BriefTextSection label="Creative Direction" text={sb.creativeDirection} />
-          <BriefTextSection label="Styling" text={sb.wardrobe} images={wardrobeImages} />
-          <BriefTextSection label="Hair & Make-Up" text={sb.hairAndMakeup} images={hmuImages} />
-          <BriefTextSection label="Location" text={sb.locations} />
-        </DeckPage>
-      )}
-
-      {/* ── Page 3 — Schedule & Concept Shot List ───────────────────────── */}
-      {hasSchedule && (
-        <DeckPage>
-          {slots.length > 0 && (
-            <section className="no-page-break mb-8">
-              <h2 className={H2}>Brief Day Schedule</h2>
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="border-b-2 border-ink">
-                    <th className="text-left text-xs font-semibold text-ink py-1.5 pr-4 w-24">Time</th>
-                    <th className="text-left text-xs font-semibold text-ink py-1.5 pr-4 w-16">Duration</th>
-                    <th className="text-left text-xs font-semibold text-ink py-1.5 pr-4">Activity</th>
-                    <th className="text-left text-xs font-semibold text-ink py-1.5 w-28">PIC</th>
-                  </tr>
-                </thead>
-                <tbody>{slots.map((slot) => <SlotRow key={slot.id} slot={slot} />)}</tbody>
-              </table>
-            </section>
-          )}
-
-          {shots.length > 0 && (
-            <section className="no-page-break">
-              <h2 className={H2}>Shot List</h2>
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="border-b-2 border-ink">
-                    <th className="text-left text-xs font-semibold text-ink py-1.5 pr-4 w-16">ID</th>
-                    <th className="text-left text-xs font-semibold text-ink py-1.5">Shot name</th>
-                  </tr>
-                </thead>
-                <tbody>{shots.map((shot) => <ShotRow key={shot.id} shot={shot} />)}</tbody>
-              </table>
-            </section>
-          )}
-        </DeckPage>
-      )}
-
-      {/* ── Page 4 — Shot List & References ─────────────────────────────── */}
-      {ddays.length > 0 && (
-        <DeckPage>
-          <h2 className={H2}>Shot List &amp; References</h2>
-          <div className="space-y-4">
-            {ddays.map((row) => (
-              <DDayDeckRow key={row.id} row={row} stylings={stylings} models={data.models} />
-            ))}
-          </div>
-        </DeckPage>
-      )}
-
-      {/* ── Page 5 — Crew & Models ──────────────────────────────────────── */}
+      {/* ── Page 2 — Crew & Models ──────────────────────────────────────── */}
       {hasCrewModels && (
         <DeckPage>
           {data.crewMembers.length > 0 && (
@@ -172,17 +121,83 @@ export default function ShootDeckDocument({ data }: { data: ShootDeckData }) {
           )}
         </DeckPage>
       )}
+
+      {/* ── Page 3 — Creative ───────────────────────────────────────────── */}
+      {hasCreative && (
+        <DeckPage>
+          <BriefTextSection label="Creative Direction" text={sb.creativeDirection} />
+          <BriefTextSection label="Styling" text={sb.wardrobe} images={wardrobeImages} />
+          <BriefTextSection label="Hair & Make-Up" text={sb.hairAndMakeup} images={hmuImages} />
+          <BriefTextSection label="Location" text={sb.locations} />
+        </DeckPage>
+      )}
+
+      {/* ── Page 4 — Schedule & Concept Shot List ───────────────────────── */}
+      {hasSchedule && (
+        <DeckPage>
+          {slots.length > 0 && (
+            <section className="no-page-break mb-8">
+              <h2 className={H2}>Brief Day Schedule</h2>
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b-2 border-ink">
+                    <th className="text-left text-xs font-semibold text-ink py-1.5 pr-4 w-24">Time</th>
+                    <th className="text-left text-xs font-semibold text-ink py-1.5 pr-4 w-16">Duration</th>
+                    <th className="text-left text-xs font-semibold text-ink py-1.5 pr-4">Activity</th>
+                    <th className="text-left text-xs font-semibold text-ink py-1.5 w-28">PIC</th>
+                  </tr>
+                </thead>
+                <tbody>{slots.map((slot) => <SlotRow key={slot.id} slot={slot} />)}</tbody>
+              </table>
+            </section>
+          )}
+
+          {shots.length > 0 && (
+            <section className="no-page-break">
+              <h2 className={H2}>Shot List</h2>
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b-2 border-ink">
+                    <th className="text-left text-xs font-semibold text-ink py-1.5 pr-4 w-16">ID</th>
+                    <th className="text-left text-xs font-semibold text-ink py-1.5">Shot name</th>
+                  </tr>
+                </thead>
+                <tbody>{shots.map((shot) => <ShotRow key={shot.id} shot={shot} />)}</tbody>
+              </table>
+            </section>
+          )}
+        </DeckPage>
+      )}
+
+      {/* ── Page 5+ — Shot List & References (split across pages) ────────── */}
+      {ddayPages.map((group, i) => (
+        <DeckPage key={`refs-${i}`}>
+          <h2 className={H2}>Shot List &amp; References{ddayPages.length > 1 ? ` (${i + 1}/${ddayPages.length})` : ''}</h2>
+          <div className="space-y-4">
+            {group.map((row) => (
+              <DDayDeckRow key={row.id} row={row} stylings={stylings} models={data.models} />
+            ))}
+          </div>
+        </DeckPage>
+      ))}
     </div>
   )
 }
 
+function chunk<T>(arr: T[], size: number): T[][] {
+  if (arr.length === 0) return []
+  const out: T[][] = []
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size))
+  return out
+}
+
 // ─── Page wrapper ─────────────────────────────────────────────────────────────
-// Screen: a centered A4-portrait card (faithful preview). Print: print.css strips
-// the card chrome and forces one A4 page per block.
+// Fixed A4-portrait box (210×297mm, 14mm padding, overflow hidden) — identical on
+// screen and in print so the preview equals the exported PDF.
 
 function DeckPage({ children }: { children: ReactNode }) {
   return (
-    <section className="deck-page w-[210mm] min-h-[297mm] mx-auto mb-[12mm] p-[16mm] bg-white shadow-lg">
+    <section className="deck-page w-[210mm] h-[297mm] overflow-hidden mx-auto mb-[12mm] p-[14mm] bg-white shadow-lg">
       {children}
     </section>
   )

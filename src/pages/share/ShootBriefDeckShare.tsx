@@ -20,7 +20,7 @@ import ShootDeckDocument from '@/components/deck/ShootDeckDocument'
 export default function ShootBriefDeckShare() {
   const { id } = useParams<{ id: string }>()
   const localProject = useShootStore((s) => s.projects.find((p) => p.id === id))
-  const triggerPrint = usePrint('portrait')
+  const triggerPrint = usePrint('portrait', { margin: '0' })
 
   // This route mounts under ShareShell (outside AppShell), so it doesn't inherit
   // useMediaSync / project structure. Hydrate the media cache and fetch the remote

@@ -15,7 +15,7 @@ import ShootDeckDocument from '@/components/deck/ShootDeckDocument'
 export default function ShootBriefDeck() {
   const { id } = useParams<{ id: string }>()
   const project = useCurrentShootProject()
-  const triggerPrint = usePrint('portrait')
+  const triggerPrint = usePrint('portrait', { margin: '0' })
 
   if (!project || !id) return <div className="p-6 text-sm text-ink-muted">Project not found.</div>
 

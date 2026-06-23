@@ -16,14 +16,17 @@ type Orientation = 'portrait' | 'landscape'
 
 const STYLE_ID = 'brand-ops-print-orientation'
 
-export function usePrint(orientation: Orientation = 'portrait') {
+export function usePrint(orientation: Orientation = 'portrait', opts?: { margin?: string }) {
+  const margin = opts?.margin
   return useCallback(() => {
     // Remove any previously-injected style (safety)
     document.getElementById(STYLE_ID)?.remove()
 
     const style = document.createElement('style')
     style.id = STYLE_ID
-    style.textContent = `@page { size: A4 ${orientation}; }`
+    // A later @page rule overrides print.css's default margin for this artefact only.
+    // Decks pass margin:'0' so each fixed A4 .deck-page maps 1:1 onto the sheet (WYSIWYG).
+    style.textContent = `@page { size: A4 ${orientation};${margin !== undefined ? ` margin: ${margin};` : ''} }`
     document.head.appendChild(style)
 
     const cleanup = () => {
@@ -33,5 +36,5 @@ export function usePrint(orientation: Orientation = 'portrait') {
     window.addEventListener('afterprint', cleanup)
 
     window.print()
-  }, [orientation])
+  }, [orientation, margin])
 }
