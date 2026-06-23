@@ -7,6 +7,7 @@ import EmptyState from '@/components/ui/EmptyState'
 import { Clock } from 'lucide-react'
 import { MEDIA_ENTITY } from '@/lib/mediaEntityTypes'
 import { buildMediaContext } from '@/hooks/useImageStorage'
+import { compareByTimeThenOrder } from '@/lib/timeUtils'
 
 interface DDayTimelineTableProps {
   rows: DDayTimelineRow[]
@@ -23,7 +24,7 @@ interface DDayTimelineTableProps {
 }
 
 const BLANK: Omit<DDayTimelineRow, 'id' | 'order'> = {
-  imageCode: '', imageId: '', location: '', timeStart: '', timeEnd: '', modelIds: [], stylingId: '', notes: '',
+  imageCode: '', imageId: '', referenceImageIds: [], location: '', timeStart: '', timeEnd: '', modelIds: [], stylingId: '', notes: '',
 }
 
 export default function DDayTimelineTable({
@@ -32,7 +33,8 @@ export default function DDayTimelineTable({
   const [showForm, setShowForm] = useState(false)
   const [draft, setDraft] = useState(BLANK)
 
-  const sorted = [...rows].sort((a, b) => a.order - b.order)
+  // Scheduled shot list reads chronologically; untimed rows fall back to manual order.
+  const sorted = [...rows].sort(compareByTimeThenOrder)
   const d = (k: keyof typeof draft, v: unknown) => setDraft((prev) => ({ ...prev, [k]: v }))
 
   const handleAdd = () => {
@@ -69,6 +71,7 @@ export default function DDayTimelineTable({
               <tr>
                 <th className={thCls} style={{ width: 70 }}>Code</th>
                 <th className={thCls} style={{ width: 60 }}>Ref</th>
+                <th className={thCls} style={{ width: 150 }}>References</th>
                 <th className={thCls}>Location</th>
                 <th className={thCls} style={{ width: 150 }}>Time</th>
                 {stylings.length > 0 && <th className={thCls} style={{ width: 120 }}>Styling</th>}
@@ -164,6 +167,7 @@ function DDayRow({
   readOnly?: boolean
 }) {
   const mediaContext = buildMediaContext(projectId, MEDIA_ENTITY.ddayReference, row.id)
+  const refImageIds = row.referenceImageIds ?? []
 
   const toggleModel = (modelId: string) => {
     const ids = row.modelIds.includes(modelId)
@@ -189,6 +193,31 @@ function DDayRow({
           onRemove={readOnly ? undefined : () => onUpdate({ imageId: '' })}
           mediaContext={mediaContext}
         />
+      </td>
+      <td className={tdCls}>
+        {/* Additional shot references — paste/upload multiple; each flows into the brief deck */}
+        <div className="flex flex-wrap gap-1">
+          {refImageIds.map((rid, i) => (
+            <ImageThumbWithModal
+              key={`${rid}-${i}`}
+              imageId={rid}
+              size="sm"
+              onRemove={readOnly ? undefined : () => onUpdate({ referenceImageIds: refImageIds.filter((_, idx) => idx !== i) })}
+              mediaContext={mediaContext}
+            />
+          ))}
+          {!readOnly && (
+            <div className="no-print">
+              <ImageThumbWithModal
+                imageId=""
+                size="sm"
+                onUpload={(id) => onUpdate({ referenceImageIds: [...refImageIds, id] })}
+                mediaContext={mediaContext}
+              />
+            </div>
+          )}
+          {readOnly && refImageIds.length === 0 && <span className="text-xs text-ink-faint">—</span>}
+        </div>
       </td>
       <td className={tdCls}>
         <textarea value={row.location} readOnly={readOnly}

@@ -333,11 +333,11 @@ export function createSeedShootProjects(): ShootProject[] {
       ],
 
       ddayRows: [
-        { id: generateId(), imageCode: 'S01', imageId: '', location: 'Studio Neutral — White Cyc', timeStart: '09:00', timeEnd: '11:00', modelIds: [SH_MD.IL], stylingId: '', notes: 'Key outerwear looks. Min. 5 selects required.', order: 0 },
-        { id: generateId(), imageCode: 'S02', imageId: '', location: 'Studio Neutral — Detail Table', timeStart: '11:00', timeEnd: '12:00', modelIds: [], stylingId: '', notes: 'No models. Product-only. Macro lens setup.', order: 1 },
-        { id: generateId(), imageCode: 'S03', imageId: '', location: 'Studio Neutral — Main Studio', timeStart: '13:00', timeEnd: '14:30', modelIds: [SH_MD.IL, SH_MD.ZN, SH_MD.KP], stylingId: '', notes: 'All models. Movement direction by Marco.', order: 2 },
-        { id: generateId(), imageCode: 'S04', imageId: '', location: 'Studio Neutral — Main Studio', timeStart: '14:30', timeEnd: '15:30', modelIds: [SH_MD.IL, SH_MD.ZN, SH_MD.KP], stylingId: '', notes: 'Group composition. Pre-set positions before rolling.', order: 3 },
-        { id: generateId(), imageCode: 'S05', imageId: '', location: 'Rooftop — TBC', timeStart: '16:30', timeEnd: '17:30', modelIds: [SH_MD.ZN], stylingId: '', notes: 'Golden hour priority. Have everything pre-lit.', order: 4 },
+        { id: generateId(), imageCode: 'S01', imageId: '', referenceImageIds: [], location: 'Studio Neutral — White Cyc', timeStart: '09:00', timeEnd: '11:00', modelIds: [SH_MD.IL], stylingId: '', notes: 'Key outerwear looks. Min. 5 selects required.', order: 0 },
+        { id: generateId(), imageCode: 'S02', imageId: '', referenceImageIds: [], location: 'Studio Neutral — Detail Table', timeStart: '11:00', timeEnd: '12:00', modelIds: [], stylingId: '', notes: 'No models. Product-only. Macro lens setup.', order: 1 },
+        { id: generateId(), imageCode: 'S03', imageId: '', referenceImageIds: [], location: 'Studio Neutral — Main Studio', timeStart: '13:00', timeEnd: '14:30', modelIds: [SH_MD.IL, SH_MD.ZN, SH_MD.KP], stylingId: '', notes: 'All models. Movement direction by Marco.', order: 2 },
+        { id: generateId(), imageCode: 'S04', imageId: '', referenceImageIds: [], location: 'Studio Neutral — Main Studio', timeStart: '14:30', timeEnd: '15:30', modelIds: [SH_MD.IL, SH_MD.ZN, SH_MD.KP], stylingId: '', notes: 'Group composition. Pre-set positions before rolling.', order: 3 },
+        { id: generateId(), imageCode: 'S05', imageId: '', referenceImageIds: [], location: 'Rooftop — TBC', timeStart: '16:30', timeEnd: '17:30', modelIds: [SH_MD.ZN], stylingId: '', notes: 'Golden hour priority. Have everything pre-lit.', order: 4 },
       ],
 
       moodboardItems: [],

@@ -3,6 +3,7 @@ import { Plus, ArrowUp, ArrowDown, Trash2, Clock } from 'lucide-react'
 import type { DayOfSlot } from '@/types/common'
 import EmptyState from '@/components/ui/EmptyState'
 import { inputCls } from '@/components/ui/FormField'
+import { durationLabel, compareByTimeThenOrder } from '@/lib/timeUtils'
 
 interface DayOfScheduleProps {
   slots: DayOfSlot[]
@@ -12,15 +13,23 @@ interface DayOfScheduleProps {
   onMove: (id: string, direction: 'up' | 'down') => void
   /** When true, hides add/remove/reorder controls and makes cells read-only. */
   readOnly?: boolean
+  /**
+   * Detailed run-of-show mode (shoots): adds a derived Duration column and orders
+   * rows by start time (untimed rows last). Omitted/false (events) keeps the original
+   * Time/Activity/Owner/Notes layout ordered by manual `order` — event behaviour unchanged.
+   */
+  detailedSchedule?: boolean
 }
 
 const BLANK = { timeStart: '', timeEnd: '', activity: '', owner: '', notes: '' }
 
-export default function DayOfSchedule({ slots, onAdd, onUpdate, onRemove, onMove, readOnly }: DayOfScheduleProps) {
+export default function DayOfSchedule({ slots, onAdd, onUpdate, onRemove, onMove, readOnly, detailedSchedule }: DayOfScheduleProps) {
   const [showForm, setShowForm] = useState(false)
   const [draft, setDraft] = useState(BLANK)
 
-  const sorted = [...slots].sort((a, b) => a.order - b.order)
+  const sorted = detailedSchedule
+    ? [...slots].sort(compareByTimeThenOrder)
+    : [...slots].sort((a, b) => a.order - b.order)
 
   const handleAdd = () => {
     if (!draft.activity.trim()) return
@@ -52,9 +61,12 @@ export default function DayOfSchedule({ slots, onAdd, onUpdate, onRemove, onMove
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="border-b border-surface-3">
-                {['Time', 'Activity', 'Owner', 'Notes', ''].map((h) => (
+                {(detailedSchedule
+                  ? ['Time', 'Duration', 'Activity', 'Owner', 'Notes', '']
+                  : ['Time', 'Activity', 'Owner', 'Notes', '']
+                ).map((h, i) => (
                   <th
-                    key={h}
+                    key={`${h}-${i}`}
                     className="text-left text-2xs font-bold uppercase tracking-widest text-ink-faint px-3 py-2"
                   >
                     {h}
@@ -73,6 +85,7 @@ export default function DayOfSchedule({ slots, onAdd, onUpdate, onRemove, onMove
                   onRemove={() => onRemove(slot.id)}
                   onMove={(dir) => onMove(slot.id, dir)}
                   readOnly={readOnly}
+                  showDuration={!!detailedSchedule}
                 />
               ))}
             </tbody>
@@ -135,9 +148,10 @@ interface SlotRowProps {
   onRemove: () => void
   onMove: (direction: 'up' | 'down') => void
   readOnly?: boolean
+  showDuration?: boolean
 }
 
-function SlotRow({ slot, isFirst, isLast, onUpdate, onRemove, onMove, readOnly }: SlotRowProps) {
+function SlotRow({ slot, isFirst, isLast, onUpdate, onRemove, onMove, readOnly, showDuration }: SlotRowProps) {
   const cellCls = 'px-3 py-2 border-b border-surface-3 align-top'
   const cellInputCls = 'w-full bg-transparent text-sm text-ink focus:outline-none focus:bg-white border border-transparent focus:border-surface-3 rounded px-1 -mx-1 py-0.5'
 
@@ -154,6 +168,13 @@ function SlotRow({ slot, isFirst, isLast, onUpdate, onRemove, onMove, readOnly }
             className={cellInputCls} style={{ minWidth: 80 }} />
         </div>
       </td>
+      {showDuration && (
+        <td className={cellCls}>
+          <span className="inline-block mt-0.5 text-xs text-ink-muted whitespace-nowrap">
+            {durationLabel(slot.timeStart, slot.timeEnd) || '—'}
+          </span>
+        </td>
+      )}
       <td className={cellCls}>
         <textarea value={slot.activity} readOnly={readOnly}
           onChange={(e) => onUpdate({ activity: e.target.value })}

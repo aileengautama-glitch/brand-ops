@@ -4,8 +4,9 @@ import { useCurrentShootProject } from '@/hooks/useCurrentProject'
 import { useStoredImage } from '@/hooks/useImageStorage'
 import CopyShareLinkButton from '@/components/ui/CopyShareLinkButton'
 import { usePrint } from '@/hooks/usePrint'
-import type { Model, Shot, ShootBriefSection } from '@/types/shoot'
+import type { Model, Shot, ShootBriefSection, DDayTimelineRow, Styling } from '@/types/shoot'
 import type { MoodboardItem, DayOfSlot } from '@/types/common'
+import { durationLabel, compareByTimeThenOrder } from '@/lib/timeUtils'
 
 const BRIEF_PRINT_SECTIONS: { key: keyof ShootBriefSection; label: string }[] = [
   { key: 'overview',          label: 'Overview' },
@@ -24,8 +25,9 @@ export default function ShootBriefDeck() {
 
   if (!project || !id) return <div className="p-6 text-sm text-ink-muted">Project not found.</div>
 
-  const sortedSlots = [...project.dayOfSlots].sort((a, b) => a.order - b.order)
+  const sortedSlots = [...project.dayOfSlots].sort(compareByTimeThenOrder)
   const sortedShots = [...project.shots].sort((a, b) => a.order - b.order)
+  const sortedDDay = [...project.ddayRows].sort(compareByTimeThenOrder)
   const sortedMoodboard = [...project.briefMoodboardItems].sort((a, b) => a.order - b.order)
   const bd = project.briefDetails
 
@@ -158,9 +160,11 @@ export default function ShootBriefDeck() {
                 <table className="w-full text-sm border-collapse">
                   <thead>
                     <tr className="border-b-2 border-ink">
-                      <th className="text-left text-xs font-semibold text-ink py-1.5 pr-4 w-28">Time</th>
+                      <th className="text-left text-xs font-semibold text-ink py-1.5 pr-4 w-24">Time</th>
+                      <th className="text-left text-xs font-semibold text-ink py-1.5 pr-4 w-16">Duration</th>
                       <th className="text-left text-xs font-semibold text-ink py-1.5 pr-4">Activity</th>
-                      <th className="text-left text-xs font-semibold text-ink py-1.5 w-32">Owner</th>
+                      <th className="text-left text-xs font-semibold text-ink py-1.5 pr-4 w-28">PIC</th>
+                      <th className="text-left text-xs font-semibold text-ink py-1.5 w-36">Notes</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -174,6 +178,25 @@ export default function ShootBriefDeck() {
           </div>
 
         </div>
+
+        {/* ── Shot List & References — scheduled shots with imagery ─────── */}
+        {sortedDDay.length > 0 && (
+          <section className="no-page-break">
+            <h3 className="text-2xs font-bold uppercase tracking-[0.14em] text-ink-faint mb-3">
+              Shot List &amp; References
+            </h3>
+            <div className="space-y-4">
+              {sortedDDay.map((row) => (
+                <DDayDeckRow
+                  key={row.id}
+                  row={row}
+                  stylings={project.stylings ?? []}
+                  models={project.models}
+                />
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* ── Crew + Models — full width ────────────────────────────────── */}
         {project.crewMembers.length > 0 && (
@@ -246,10 +269,57 @@ function ScheduleRow({ slot }: { slot: DayOfSlot }) {
   return (
     <tr>
       <td className="py-1.5 pr-4 border-b border-surface-3 text-ink-secondary whitespace-nowrap">{timeStr || '—'}</td>
+      <td className="py-1.5 pr-4 border-b border-surface-3 text-ink-muted whitespace-nowrap">{durationLabel(slot.timeStart, slot.timeEnd) || '—'}</td>
       <td className="py-1.5 pr-4 border-b border-surface-3 text-ink">{slot.activity}</td>
       <td className="py-1.5 pr-4 border-b border-surface-3 text-ink-muted">{slot.owner || '—'}</td>
       <td className="py-1.5 border-b border-surface-3 text-ink-faint text-xs">{slot.notes || '—'}</td>
     </tr>
+  )
+}
+
+// ─── Scheduled shot-list row with reference imagery (brief deck) ──────────────
+
+function DDayDeckRow({ row, stylings, models }: { row: DDayTimelineRow; stylings: Styling[]; models: Model[] }) {
+  const timeStr = [row.timeStart, row.timeEnd].filter(Boolean).join(' – ')
+  const dur = durationLabel(row.timeStart, row.timeEnd)
+  const styling = stylings.find((s) => s.id === row.stylingId)
+  const modelNames = row.modelIds
+    .map((mid) => models.find((m) => m.id === mid)?.name)
+    .filter(Boolean)
+    .join(', ')
+  const imageIds = [row.imageId, ...(row.referenceImageIds ?? [])].filter(Boolean)
+
+  return (
+    <div className="no-page-break border-b border-surface-3 pb-4">
+      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 mb-2">
+        {row.imageCode && <span className="font-mono text-xs text-ink-secondary">{row.imageCode}</span>}
+        {timeStr && <span className="text-xs text-ink-muted whitespace-nowrap">{timeStr}{dur ? ` · ${dur}` : ''}</span>}
+        {row.location && <span className="text-sm font-medium text-ink">{row.location}</span>}
+        {styling && <span className="text-2xs font-mono text-accent">{styling.stylingCode}</span>}
+        {modelNames && <span className="text-xs text-ink-muted">Models: {modelNames}</span>}
+      </div>
+      {row.notes && <p className="text-xs text-ink-muted mb-2 whitespace-pre-wrap">{row.notes}</p>}
+      {imageIds.length > 0 && (
+        <div className="grid grid-cols-6 gap-2">
+          {imageIds.map((iid, i) => (
+            <DeckRefThumb key={`${iid}-${i}`} imageId={iid} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DeckRefThumb({ imageId }: { imageId: string }) {
+  const url = useStoredImage(imageId || undefined)
+  return (
+    <div className="aspect-[3/4] bg-surface-1 border border-surface-3 rounded overflow-hidden">
+      {url ? (
+        <img src={url} alt="Shot reference" className="w-full h-full object-cover" />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center text-ink-faint text-2xs">No image</div>
+      )}
+    </div>
   )
 }
 

@@ -51,7 +51,8 @@ export interface Shot {
 export interface DDayTimelineRow {
   id: string
   imageCode: string
-  imageId: string       // IndexedDB key for reference thumbnail
+  imageId: string       // IndexedDB key for the primary reference thumbnail
+  referenceImageIds: string[]  // additional reference images for this shot (IndexedDB keys); '?? []' on legacy rows
   location: string
   timeStart: string     // e.g. '09:00'
   timeEnd: string       // e.g. '10:30'

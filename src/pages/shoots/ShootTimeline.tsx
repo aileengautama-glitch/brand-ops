@@ -47,7 +47,7 @@ export default function ShootTimeline() {
         />
       </PageSection>
 
-      <PageSection label="Day-Of Schedule" card>
+      <PageSection label="Detailed Day-Of Schedule" card>
         <DayOfSchedule
           slots={project.dayOfSlots}
           onAdd={(data) => addDayOfSlot(id, data)}
@@ -55,6 +55,7 @@ export default function ShootTimeline() {
           onRemove={(sid) => removeDayOfSlot(id, sid)}
           onMove={(sid, dir) => moveDayOfSlot(id, sid, dir)}
           readOnly={readOnly}
+          detailedSchedule
         />
       </PageSection>
     </div>

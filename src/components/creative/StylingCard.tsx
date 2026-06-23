@@ -129,7 +129,7 @@ export default function StylingCard({
   }
 
   return (
-    <div className="bg-white border border-surface-3 rounded overflow-hidden group">
+    <div className="bg-white border border-surface-3 rounded overflow-hidden group no-page-break">
       {/* ── 1. Image ─────────────────────────────────────────────────── */}
       <StylingImageSlot
         imageId={styling.imageId}
