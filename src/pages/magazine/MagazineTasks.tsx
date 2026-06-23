@@ -5,6 +5,7 @@ import { useMagazineStore } from '@/store/useMagazineStore'
 import { useUserStore } from '@/store/useUserStore'
 import { buildDirectory } from '@/auth/members'
 import { MagazineTaskRepository } from '@/repositories'
+import { supabasePushTask, supabaseDeleteTask } from '@/repositories/magazineTasks'
 import { useCurrentMagazineProject } from '@/hooks/useCurrentProject'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import ProjectHeader from '@/components/layout/ProjectHeader'
@@ -366,6 +367,41 @@ export default function MagazineTasks() {
     setDraft(BLANK); setShowAdd(false)
   }
 
+  // Member content editing (Option B): edits to a REMOTE-ONLY task — the admin's task,
+  // not in this device's local store (a member only has the project shell) — go DIRECT to
+  // Supabase (RLS-scoped to the member's edit grant) + optimistically update the remoteTasks
+  // snapshot, bypassing the local store so the member's copy never wins over the admin's
+  // future edits. Local tasks (admin / a member's own added task) keep the store + dual-write.
+  const isLocalTask = (taskId: string) => localTasks.some((t) => t.id === taskId)
+
+  const handleUpdate = (taskId: string, patch: Partial<MagazineTask>) => {
+    if (isLocalTask(taskId)) { updateTask(id, taskId, patch); return }
+    const current = (remoteTasks ?? []).find((t) => t.id === taskId)
+    if (!current) return
+    const updated = { ...current, ...patch, updatedAt: now() }
+    setRemoteTasks((prev) => (prev ? prev.map((t) => (t.id === taskId ? updated : t)) : prev))
+    void supabasePushTask(updated, id)
+  }
+
+  const handleRemoveTask = (taskId: string) => {
+    if (isLocalTask(taskId)) { removeTask(id, taskId); return }
+    setRemoteTasks((prev) => (prev ? prev.filter((t) => t.id !== taskId) : prev))
+    void supabaseDeleteTask(taskId)
+  }
+
+  const handleReorder = (taskId: string, otherId: string) => {
+    if (isLocalTask(taskId) && isLocalTask(otherId)) { swapTaskOrder(id, taskId, otherId); return }
+    const list = remoteTasks ?? []
+    const a = list.find((t) => t.id === taskId)
+    const b = list.find((t) => t.id === otherId)
+    if (!a || !b) return
+    const newA = { ...a, order: b.order, updatedAt: now() }
+    const newB = { ...b, order: a.order, updatedAt: now() }
+    setRemoteTasks((prev) => (prev ? prev.map((t) => (t.id === taskId ? newA : t.id === otherId ? newB : t)) : prev))
+    void supabasePushTask(newA, id)
+    void supabasePushTask(newB, id)
+  }
+
   // Counts (overall, not filtered)
   const counts = {
     todo:        allTasks.filter((t) => t.status === 'todo').length,
@@ -524,10 +560,10 @@ export default function MagazineTasks() {
                           members={members}
                           projectId={id}
                           linkOptions={linkOptions}
-                          onUpdate={(patch) => updateTask(id, t.id, patch)}
-                          onRemove={() => removeTask(id, t.id)}
-                          onMoveUp={() => { const prev = g.items[idx - 1]; if (prev) swapTaskOrder(id, t.id, prev.id) }}
-                          onMoveDown={() => { const next = g.items[idx + 1]; if (next) swapTaskOrder(id, t.id, next.id) }}
+                          onUpdate={(patch) => handleUpdate(t.id, patch)}
+                          onRemove={() => handleRemoveTask(t.id)}
+                          onMoveUp={() => { const prev = g.items[idx - 1]; if (prev) handleReorder(t.id, prev.id) }}
+                          onMoveDown={() => { const next = g.items[idx + 1]; if (next) handleReorder(t.id, next.id) }}
                           canMoveUp={idx > 0}
                           canMoveDown={idx < g.items.length - 1}
                           hideAssignee={groupBy === 'person'}
