@@ -24,7 +24,7 @@ interface DDayTimelineTableProps {
 }
 
 const BLANK: Omit<DDayTimelineRow, 'id' | 'order'> = {
-  imageCode: '', imageId: '', referenceImageIds: [], location: '', timeStart: '', timeEnd: '', modelIds: [], stylingId: '', notes: '',
+  imageCode: '', imageId: '', referenceImageIds: [], location: '', timeStart: '', timeEnd: '', modelIds: [], stylingId: '', modelStylings: [], notes: '',
 }
 
 export default function DDayTimelineTable({
@@ -74,7 +74,7 @@ export default function DDayTimelineTable({
                 <th className={thCls} style={{ width: 150 }}>References</th>
                 <th className={thCls}>Location</th>
                 <th className={thCls} style={{ width: 150 }}>Time</th>
-                {stylings.length > 0 && <th className={thCls} style={{ width: 120 }}>Styling</th>}
+                {stylings.length > 0 && <th className={thCls} style={{ width: 170 }}>Looks (styling per model)</th>}
                 <th className={thCls}>Models</th>
                 <th className={thCls}>Notes</th>
                 {!readOnly && <th className={`${thCls} no-print`} style={{ width: 60 }}></th>}
@@ -169,14 +169,22 @@ function DDayRow({
   const mediaContext = buildMediaContext(projectId, MEDIA_ENTITY.ddayReference, row.id)
   const refImageIds = row.referenceImageIds ?? []
 
+  const modelStylings = row.modelStylings ?? []
+
   const toggleModel = (modelId: string) => {
-    const ids = row.modelIds.includes(modelId)
-      ? row.modelIds.filter((id) => id !== modelId)
-      : [...row.modelIds, modelId]
-    onUpdate({ modelIds: ids })
+    const inShot = row.modelIds.includes(modelId)
+    const ids = inShot ? row.modelIds.filter((id) => id !== modelId) : [...row.modelIds, modelId]
+    // Drop a removed model's look so modelStylings never references absent models.
+    const ms = inShot ? modelStylings.filter((x) => x.modelId !== modelId) : modelStylings
+    onUpdate({ modelIds: ids, modelStylings: ms })
   }
 
-  const selectedStyling = stylings.find((s) => s.id === row.stylingId)
+  const setModelStyling = (modelId: string, stylingId: string) => {
+    const next = modelStylings.some((x) => x.modelId === modelId)
+      ? modelStylings.map((x) => (x.modelId === modelId ? { ...x, stylingId } : x))
+      : [...modelStylings, { modelId, stylingId }]
+    onUpdate({ modelStylings: next })
+  }
 
   return (
     <tr className="hover:bg-surface-1/30 group transition-colors">
@@ -238,23 +246,33 @@ function DDayRow({
       </td>
       {stylings.length > 0 && (
         <td className={tdCls}>
-          <select
-            value={row.stylingId}
-            onChange={(e) => onUpdate({ stylingId: e.target.value })}
-            disabled={readOnly}
-            className="w-full bg-transparent text-xs text-ink focus:outline-none focus:bg-white rounded px-1 py-0.5 border-0 disabled:opacity-100"
-          >
-            <option value="">—</option>
-            {stylings.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.stylingCode}{s.name ? ` · ${s.name}` : ''}
-              </option>
-            ))}
-          </select>
-          {selectedStyling && (
-            <span className="text-2xs text-accent font-mono block truncate px-1">
-              {selectedStyling.stylingCode}
-            </span>
+          {row.modelIds.length === 0 ? (
+            <span className="text-2xs text-ink-faint">Add models →</span>
+          ) : (
+            <div className="space-y-1">
+              {row.modelIds.map((mid) => {
+                const model = models.find((m) => m.id === mid)
+                const current = modelStylings.find((x) => x.modelId === mid)?.stylingId ?? ''
+                return (
+                  <div key={mid} className="flex items-center gap-1">
+                    <span className="text-2xs text-ink-faint shrink-0 w-12 truncate" title={model?.name}>
+                      {model?.name.split(' ')[0] ?? '—'}
+                    </span>
+                    <select
+                      value={current}
+                      onChange={(e) => setModelStyling(mid, e.target.value)}
+                      disabled={readOnly}
+                      className="flex-1 min-w-0 bg-transparent text-2xs text-ink focus:outline-none focus:bg-white rounded px-1 py-0.5 border-0 disabled:opacity-100"
+                    >
+                      <option value="">—</option>
+                      {stylings.map((s) => (
+                        <option key={s.id} value={s.id}>{s.stylingCode}{s.name ? ` · ${s.name}` : ''}</option>
+                      ))}
+                    </select>
+                  </div>
+                )
+              })}
+            </div>
           )}
         </td>
       )}

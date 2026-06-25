@@ -337,6 +337,15 @@ function DDayDeckRow({ row, stylings, models }: { row: DDayTimelineRow; stylings
     .map((mid) => models.find((m) => m.id === mid)?.name)
     .filter(Boolean)
     .join(', ')
+  // Per-model looks (new model); falls back to the legacy single styling + model names below.
+  const looks = (row.modelStylings ?? [])
+    .map((ms) => {
+      const name = models.find((m) => m.id === ms.modelId)?.name?.split(' ')[0]
+      if (!name) return null
+      const code = stylings.find((s) => s.id === ms.stylingId)?.stylingCode
+      return code ? `${name} · ${code}` : name
+    })
+    .filter(Boolean) as string[]
   const imageIds = [row.imageId, ...(row.referenceImageIds ?? [])].filter(Boolean)
 
   return (
@@ -345,8 +354,14 @@ function DDayDeckRow({ row, stylings, models }: { row: DDayTimelineRow; stylings
         {row.imageCode && <span className="font-mono text-xs text-ink-secondary">{row.imageCode}</span>}
         {timeStr && <span className="text-xs text-ink-muted whitespace-nowrap">{timeStr}{dur ? ` · ${dur}` : ''}</span>}
         {row.location && <span className="text-sm font-medium text-ink">{row.location}</span>}
-        {styling && <span className="text-2xs font-mono text-accent">{styling.stylingCode}</span>}
-        {modelNames && <span className="text-xs text-ink-muted">Models: {modelNames}</span>}
+        {looks.length > 0 ? (
+          <span className="text-2xs font-mono text-accent">{looks.join('   ')}</span>
+        ) : (
+          <>
+            {styling && <span className="text-2xs font-mono text-accent">{styling.stylingCode}</span>}
+            {modelNames && <span className="text-xs text-ink-muted">Models: {modelNames}</span>}
+          </>
+        )}
       </div>
       {row.notes && <p className="text-xs text-ink-muted mb-2 whitespace-pre-wrap">{row.notes}</p>}
       {imageIds.length > 0 && (

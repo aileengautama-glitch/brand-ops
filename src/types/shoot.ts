@@ -49,6 +49,12 @@ export interface Shot {
   order: number
 }
 
+/** A single model's look within one shot: which styling that model wears. */
+export interface ModelStyling {
+  modelId: string       // references Model.id
+  stylingId: string     // references Styling.id ('' if unset)
+}
+
 export interface DDayTimelineRow {
   id: string
   imageCode: string
@@ -57,8 +63,9 @@ export interface DDayTimelineRow {
   location: string
   timeStart: string     // e.g. '09:00'
   timeEnd: string       // e.g. '10:30'
-  modelIds: string[]    // references to Model.id
-  stylingId: string     // references to Styling.id ('' if none)
+  modelIds: string[]    // references to Model.id — who is in this shot
+  stylingId: string     // legacy single styling (kept for back-compat / deck fallback)
+  modelStylings: ModelStyling[]  // per-model looks: which styling each model wears in this shot ('?? []' on legacy rows)
   notes: string
   order: number
 }
