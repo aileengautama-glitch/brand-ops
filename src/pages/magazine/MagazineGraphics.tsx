@@ -12,7 +12,7 @@ import {
   useStoredImage, useImageStorage, buildMediaContext,
   type MediaContext,
 } from '@/hooks/useImageStorage'
-import { useClipboardImage } from '@/hooks/useClipboardImage'
+import ImageDropZone from '@/components/ui/ImageDropZone'
 import { MEDIA_ENTITY } from '@/lib/mediaEntityTypes'
 import ProjectHeader from '@/components/layout/ProjectHeader'
 import PageSection from '@/components/layout/PageSection'
@@ -455,18 +455,19 @@ export default function MagazineGraphics() {
   const { canEdit }   = useCurrentUser()
   const readOnly      = !canEdit('magazine.graphics', id)
 
-  // Clipboard paste → new inspiration tile.
+  // Image intake → new inspiration tile(s): click to pick, drag & drop, or paste (jpg/png).
   const { save }                = useImageStorage()
   const addInspoWithImage       = useMagazineStore((s) => s.addGraphicsInspoWithImage)
   const [pasteToast, setPasteToast] = useState<string | null>(null)
-  const handlePasteImage = useCallback(async (file: File) => {
+  const handleInspoFiles = useCallback(async (files: File[]) => {
     if (!id) return
-    const imageId = await save(file)
-    addInspoWithImage(id, imageId)
-    setPasteToast('Image pasted to inspiration board')
+    for (const file of files) {
+      const imageId = await save(file)
+      addInspoWithImage(id, imageId)
+    }
+    setPasteToast(`Added ${files.length} image${files.length > 1 ? 's' : ''} to inspiration board`)
     window.setTimeout(() => setPasteToast(null), 2500)
   }, [id, save, addInspoWithImage])
-  useClipboardImage(handlePasteImage, !readOnly)
 
   const [filter, setFilter] = useState<FilterVal>('all')
 
@@ -538,7 +539,7 @@ export default function MagazineGraphics() {
           </button>
         ) : undefined}
       >
-        <p className="text-xs text-ink-faint mb-3">Type, layout, and palette references for the issue's design — kept separate from the deliverables below.{!readOnly && <span className="text-ink-muted"> Paste an image (⌘/Ctrl+V) to add it.</span>}</p>
+        <p className="text-xs text-ink-faint mb-3">Type, layout, and palette references for the issue's design — kept separate from the deliverables below.{!readOnly && <span className="text-ink-muted"> Click, drag &amp; drop, or paste images (JPG/PNG) to add.</span>}</p>
         {inspo.length === 0 && readOnly ? (
           <p className="text-xs text-ink-faint italic">No inspiration added yet.</p>
         ) : (
@@ -560,6 +561,9 @@ export default function MagazineGraphics() {
               </div>
             )}
           </div>
+        )}
+        {!readOnly && (
+          <ImageDropZone onFiles={handleInspoFiles} compact className="mt-3" />
         )}
       </PageSection>
 

@@ -1,7 +1,7 @@
-import { useRef } from 'react'
 import { Trash2, ImagePlus, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { MoodboardItem } from '@/types/common'
 import ImageThumbWithModal from '@/components/ui/ImageThumbWithModal'
+import ImageDropZone from '@/components/ui/ImageDropZone'
 import EmptyState from '@/components/ui/EmptyState'
 import { useImageStorage } from '@/hooks/useImageStorage'
 import { isValidUUID } from '@/repositories/projects'
@@ -25,25 +25,23 @@ interface MoodboardGridProps {
 
 export default function MoodboardGrid({ items, onAdd, onUpdate, onRemove, onReorder, projectId, readOnly }: MoodboardGridProps) {
   const { save } = useImageStorage()
-  const fileRef = useRef<HTMLInputElement>(null)
   const sorted = [...items].sort((a, b) => a.order - b.order)
 
   // Only enable Supabase upload when the project has a real UUID.
   const hasValidProject = !!projectId && isValidUUID(projectId)
 
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    // entityId is '' because the MoodboardItem doesn't exist yet at upload time.
-    // The media row's entity_id can be backfilled in D2 if needed.
-    const id = await save(
-      file,
-      hasValidProject
-        ? { projectId: projectId!, entityType: MEDIA_ENTITY.moodboardItem, entityId: '' }
-        : undefined
-    )
-    onAdd(id, '')
-    if (fileRef.current) fileRef.current.value = ''
+  // Save each intaken file (jpg/png, validated by ImageDropZone) then append it.
+  // entityId is '' because the MoodboardItem doesn't exist yet at upload time.
+  const handleFiles = async (files: File[]) => {
+    for (const file of files) {
+      const id = await save(
+        file,
+        hasValidProject
+          ? { projectId: projectId!, entityType: MEDIA_ENTITY.moodboardItem, entityId: '' }
+          : undefined
+      )
+      onAdd(id, '')
+    }
   }
 
   const move = (id: string, direction: 'prev' | 'next') => {
@@ -59,21 +57,11 @@ export default function MoodboardGrid({ items, onAdd, onUpdate, onRemove, onReor
   return (
     <div>
       {sorted.length === 0 ? (
-        <EmptyState
-          icon={ImagePlus}
-          title="No images yet"
-          description={readOnly ? undefined : 'Upload images to build the moodboard.'}
-          action={
-            readOnly ? undefined : (
-              <button
-                onClick={() => fileRef.current?.click()}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-accent text-white rounded hover:bg-accent-dark transition-colors"
-              >
-                <ImagePlus size={13} /> Upload image
-              </button>
-            )
-          }
-        />
+        readOnly ? (
+          <EmptyState icon={ImagePlus} title="No images yet" />
+        ) : (
+          <ImageDropZone onFiles={handleFiles} label="Upload moodboard images" />
+        )
       ) : (
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
           {sorted.map((item, i) => (
@@ -95,15 +83,8 @@ export default function MoodboardGrid({ items, onAdd, onUpdate, onRemove, onReor
       )}
 
       {sorted.length > 0 && !readOnly && (
-        <button
-          onClick={() => fileRef.current?.click()}
-          className="mt-3 flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink transition-colors"
-        >
-          <ImagePlus size={13} /> Add image
-        </button>
+        <ImageDropZone onFiles={handleFiles} compact className="mt-3" />
       )}
-
-      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
     </div>
   )
 }

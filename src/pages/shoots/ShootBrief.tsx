@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { ImagePlus } from 'lucide-react'
 import { useShootStore } from '@/store/useShootStore'
@@ -130,12 +130,20 @@ export default function ShootBrief() {
   const { canEdit } = useCurrentUser()
   const updateProject = useShootStore((s) => s.updateProject)
   const updateShootBrief = useShootStore((s) => s.updateShootBrief)
-  const addBriefMoodboardItem = useShootStore((s) => s.addBriefMoodboardItem)
-  const updateBriefMoodboardItem = useShootStore((s) => s.updateBriefMoodboardItem)
-  const removeBriefMoodboardItem = useShootStore((s) => s.removeBriefMoodboardItem)
-  const reorderBriefMoodboardItems = useShootStore((s) => s.reorderBriefMoodboardItems)
+  // Shoot Brief moodboard is the SAME board as Creative & Shot List (single source).
+  const addMoodboardItem = useShootStore((s) => s.addMoodboardItem)
+  const updateMoodboardItem = useShootStore((s) => s.updateMoodboardItem)
+  const removeMoodboardItem = useShootStore((s) => s.removeMoodboardItem)
+  const reorderMoodboardItems = useShootStore((s) => s.reorderMoodboardItems)
+  const consolidateBriefMoodboard = useShootStore((s) => s.consolidateBriefMoodboard)
   const addBriefSectionImage = useShootStore((s) => s.addBriefSectionImage)
   const removeBriefSectionImage = useShootStore((s) => s.removeBriefSectionImage)
+
+  // One-time, non-destructive: fold any legacy brief-only moodboard images into the
+  // shared moodboard so nothing is lost. Guarded so it no-ops once consolidated.
+  useEffect(() => {
+    if (id && (project?.briefMoodboardItems?.length ?? 0) > 0) consolidateBriefMoodboard(id)
+  }, [id, project?.briefMoodboardItems?.length, consolidateBriefMoodboard])
 
   if (!project || !id) return <div className="p-6 text-sm text-ink-muted">Project not found.</div>
 
@@ -152,12 +160,13 @@ export default function ShootBrief() {
 
       {/* ── Moodboard (top) ──────────────────────────────────────────────── */}
       <PageSection label="Moodboard">
+        <p className="text-xs text-ink-muted mb-2 no-print">Shared with the Creative &amp; Shot List moodboard — edits here update both.</p>
         <MoodboardGrid
-          items={project.briefMoodboardItems}
-          onAdd={(imageId, caption) => addBriefMoodboardItem(id, { imageId, caption })}
-          onUpdate={(mid, patch) => updateBriefMoodboardItem(id, mid, patch)}
-          onRemove={(mid) => removeBriefMoodboardItem(id, mid)}
-          onReorder={(orderedIds) => reorderBriefMoodboardItems(id, orderedIds)}
+          items={project.moodboardItems}
+          onAdd={(imageId, caption) => addMoodboardItem(id, { imageId, caption })}
+          onUpdate={(mid, patch) => updateMoodboardItem(id, mid, patch)}
+          onRemove={(mid) => removeMoodboardItem(id, mid)}
+          onReorder={(orderedIds) => reorderMoodboardItems(id, orderedIds)}
           projectId={id}
           readOnly={readOnly}
         />

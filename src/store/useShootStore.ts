@@ -119,6 +119,10 @@ interface ShootStoreState {
   updateBriefMoodboardItem: (projectId: string, id: string, patch: Partial<MoodboardItem>) => void
   removeBriefMoodboardItem: (projectId: string, id: string) => void
   reorderBriefMoodboardItems: (projectId: string, orderedIds: string[]) => void
+  /** One-time, non-destructive merge of legacy briefMoodboardItems into the shared
+   *  moodboardItems (the Creative & Shot List source), then clears the brief array.
+   *  Call only when briefMoodboardItems is non-empty (caller guards) — idempotent. */
+  consolidateBriefMoodboard: (projectId: string) => void
 
   // ── Brief section images (wardrobe / HMU / locations) ────────────────────────
   addBriefSectionImage: (projectId: string, section: BriefImageSection, imageId: string) => void
@@ -426,6 +430,15 @@ export const useShootStore = create<ShootStoreState>()(
           patch(projectId, (p) => ({ briefMoodboardItems: p.briefMoodboardItems.filter((m) => m.id !== id) })),
         reorderBriefMoodboardItems: (projectId, orderedIds) =>
           patch(projectId, (p) => ({ briefMoodboardItems: reorderByIds(p.briefMoodboardItems, orderedIds) })),
+        consolidateBriefMoodboard: (projectId) =>
+          patch(projectId, (p) => {
+            const existing = new Set(p.moodboardItems.map((m) => m.id))
+            const maxOrder = p.moodboardItems.reduce((mx, x) => Math.max(mx, x.order), 0)
+            const add = (p.briefMoodboardItems ?? [])
+              .filter((m) => !existing.has(m.id))
+              .map((m, i) => ({ ...m, order: maxOrder + 1 + i }))
+            return { moodboardItems: [...p.moodboardItems, ...add], briefMoodboardItems: [] }
+          }),
 
         // ── Brief section images ────────────────────────────────────────────────
         addBriefSectionImage: (projectId, section, imageId) => {

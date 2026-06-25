@@ -195,6 +195,26 @@ export default function StylingCard({
           )}
         </div>
 
+        {/* ── Outfit preview — flatlays of the selected products ─────── */}
+        {styling.productIds.length > 0 && (
+          <div className="space-y-1">
+            <p className="text-2xs font-bold uppercase tracking-widest text-ink-faint">Outfit Preview</p>
+            <div className="flex flex-wrap gap-1.5">
+              {styling.productIds.map((pid) => {
+                const product = products.find((p) => p.id === pid)
+                if (!product) return null
+                return (
+                  <FlatlayThumb
+                    key={pid}
+                    imageId={product.flatlayImageId || product.imageId}
+                    label={product.name}
+                  />
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         {/* ── 4. Models ─────────────────────────────────────────────── */}
         <div className="space-y-1">
           <p className="text-2xs font-bold uppercase tracking-widest text-ink-faint">Models</p>
@@ -231,6 +251,21 @@ export default function StylingCard({
           />
         </div>
       </div>
+    </div>
+  )
+}
+
+// ─── Outfit-preview flatlay thumbnail (falls back to the fitting image) ───────
+function FlatlayThumb({ imageId, label }: { imageId: string; label: string }) {
+  const url = useStoredImage(imageId || undefined)
+  return (
+    <div className="w-14 space-y-0.5">
+      <div className="w-14 h-16 rounded overflow-hidden bg-surface-1 border border-surface-3">
+        {url
+          ? <img src={url} alt={label} className="w-full h-full object-contain" />
+          : <div className="w-full h-full flex items-center justify-center text-ink-faint text-2xs">—</div>}
+      </div>
+      <p className="text-[9px] text-ink-faint truncate leading-tight" title={label}>{label || 'Unnamed'}</p>
     </div>
   )
 }

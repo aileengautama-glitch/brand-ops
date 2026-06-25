@@ -9,7 +9,7 @@ import { MagazineVisualProjectRepository, MagazineMoodTileRepository } from '@/r
 import { useCurrentMagazineProject } from '@/hooks/useCurrentProject'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { useStoredImage, useImageStorage, buildMediaContext } from '@/hooks/useImageStorage'
-import { useClipboardImage } from '@/hooks/useClipboardImage'
+import ImageDropZone from '@/components/ui/ImageDropZone'
 import { MEDIA_ENTITY } from '@/lib/mediaEntityTypes'
 import ProjectHeader from '@/components/layout/ProjectHeader'
 import PageSection from '@/components/layout/PageSection'
@@ -329,18 +329,19 @@ export default function MagazineVisual() {
   const { canEdit }      = useCurrentUser()
   const readOnly         = !canEdit('magazine.visual', id)
 
-  // Clipboard paste → new mood tile (highest-value magazine visual surface).
+  // Image intake → new mood tile(s): click to pick, drag & drop, or paste (jpg/png).
   const { save }             = useImageStorage()
   const addMoodTileWithImage = useMagazineStore((s) => s.addMoodTileWithImage)
   const [pasteToast, setPasteToast] = useState<string | null>(null)
-  const handlePasteImage = useCallback(async (file: File) => {
+  const handleTileFiles = useCallback(async (files: File[]) => {
     if (!id) return
-    const imageId = await save(file)
-    addMoodTileWithImage(id, imageId)
-    setPasteToast('Image pasted to mood board')
+    for (const file of files) {
+      const imageId = await save(file)
+      addMoodTileWithImage(id, imageId)
+    }
+    setPasteToast(`Added ${files.length} image${files.length > 1 ? 's' : ''} to mood board`)
     window.setTimeout(() => setPasteToast(null), 2500)
   }, [id, save, addMoodTileWithImage])
-  useClipboardImage(handlePasteImage, !readOnly)
 
   // Phase 5H — Supabase-first read of this project's visual projects. Fetched once per
   // project; null = no Supabase answer (disabled / non-UUID / error / no rows).
@@ -454,12 +455,13 @@ export default function MagazineVisual() {
           {!readOnly && <span className="text-ink-muted"> Tip: paste an image (⌘/Ctrl+V) to add it as a tile.</span>}
         </p>
         {sortedTiles.length === 0 ? (
-          <div className="bg-surface-1 border border-dashed border-surface-3 rounded-lg p-10 text-center">
+          <div className="bg-surface-1 border border-dashed border-surface-3 rounded-lg p-6 text-center">
             <Image size={22} className="text-ink-faint mx-auto mb-2" />
             <p className="text-sm text-ink-muted mb-1">Mood board is empty</p>
-            <p className="text-xs text-ink-faint mb-4">
+            <p className="text-xs text-ink-faint mb-3">
               Add images, colour swatches, and captions to define the visual direction for this issue.
             </p>
+            <ImageDropZone onFiles={handleTileFiles} disabled={readOnly} label="Upload mood board images" className="max-w-md mx-auto mb-3" />
             {addTileBtn}
           </div>
         ) : (
@@ -488,6 +490,9 @@ export default function MagazineVisual() {
               </div>
             )}
           </div>
+        )}
+        {!readOnly && sortedTiles.length > 0 && (
+          <ImageDropZone onFiles={handleTileFiles} compact className="mt-3" />
         )}
       </PageSection>
     </div>

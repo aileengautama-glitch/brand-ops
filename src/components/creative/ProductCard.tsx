@@ -43,15 +43,29 @@ export default function ProductCard({
     <div className="bg-white border border-surface-3 rounded p-3 space-y-2.5 group">
       {/* Header row: image + name + ownership + move/delete */}
       <div className="flex items-start gap-3">
-        <div className="shrink-0">
-          <ImageThumbWithModal
-            imageId={product.imageId}
-            size="md"
-            objectFit="contain"
-            onUpload={(id) => onUpdate({ imageId: id })}
-            onRemove={() => onUpdate({ imageId: '' })}
-            mediaContext={buildMediaContext(projectId, MEDIA_ENTITY.productImage, product.id)}
-          />
+        <div className="shrink-0 space-y-2">
+          <div className="space-y-0.5">
+            <span className="text-2xs uppercase tracking-wide text-ink-faint block">Flatlay</span>
+            <ImageThumbWithModal
+              imageId={product.flatlayImageId}
+              size="md"
+              objectFit="contain"
+              onUpload={(imgId) => onUpdate({ flatlayImageId: imgId })}
+              onRemove={() => onUpdate({ flatlayImageId: '' })}
+              mediaContext={buildMediaContext(projectId, MEDIA_ENTITY.productFlatlay, product.id)}
+            />
+          </div>
+          <div className="space-y-0.5">
+            <span className="text-2xs uppercase tracking-wide text-ink-faint block">Fitting</span>
+            <ImageThumbWithModal
+              imageId={product.imageId}
+              size="md"
+              objectFit="contain"
+              onUpload={(imgId) => onUpdate({ imageId: imgId })}
+              onRemove={() => onUpdate({ imageId: '' })}
+              mediaContext={buildMediaContext(projectId, MEDIA_ENTITY.productImage, product.id)}
+            />
+          </div>
         </div>
         <div className="flex-1 min-w-0 space-y-1.5">
           <input

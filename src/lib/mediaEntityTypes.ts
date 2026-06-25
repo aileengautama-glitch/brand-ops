@@ -23,6 +23,7 @@ export const MEDIA_ENTITY = {
   shootBriefLocation:  'shoot_brief_location',
   // D3 — products, styling, shots, models, D-Day timeline
   productImage:        'product_image',
+  productFlatlay:      'product_flatlay',
   stylingImage:        'styling_image',
   shotReference:       'shot_reference',
   modelImage:          'model_image',

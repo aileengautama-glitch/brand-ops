@@ -101,7 +101,8 @@ export interface ProductUSP {
 export interface Product {
   id: string
   name: string
-  imageId: string       // IndexedDB key for product image
+  imageId: string       // FITTING image — garment worn / on model (legacy: the product image)
+  flatlayImageId: string // FLATLAY image — garment laid flat (packshot); '?? "" ' on legacy rows
   usps: ProductUSP[]
   ownership: 'own' | 'outsource' | ''
   category: string      // references a label from productCategories[]

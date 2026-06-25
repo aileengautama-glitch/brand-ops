@@ -141,7 +141,8 @@ export type ProductRow = {
   name:       string
   category:   string
   ownership:  string               // 'own' | 'outsource' | ''
-  image_id:   string               // media/IndexedDB key (soft ref)
+  image_id:   string               // FITTING image — media/IndexedDB key (soft ref)
+  flatlay_image_id: string         // FLATLAY image — media/IndexedDB key (soft ref); '' default
   usps:       Json                 // ProductUSP[] ([{id,text}])
   sort_order: number               // bigint in PG; safe-range number in JS
   created_at: string
@@ -197,6 +198,7 @@ export type ProductInsert = {
   category?:   string
   ownership?:  string
   image_id?:   string
+  flatlay_image_id?: string
   usps?:       Json
   sort_order?: number
   created_at?: string

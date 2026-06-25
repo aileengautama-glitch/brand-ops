@@ -62,7 +62,7 @@ export default function ShootProductsStyling() {
   const categories = project.productCategories ?? []
 
   const handleAddProduct = () => {
-    addProduct(id, { name: '', imageId: '', usps: [], ownership: '', category: '' })
+    addProduct(id, { name: '', imageId: '', flatlayImageId: '', usps: [], ownership: '', category: '' })
   }
 
   const handleAddStyling = () => {

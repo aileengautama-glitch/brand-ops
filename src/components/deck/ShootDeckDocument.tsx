@@ -43,7 +43,10 @@ const CONTACT_PER_PAGE = 30
 export default function ShootDeckDocument({ data }: { data: ShootDeckData }) {
   const bd = data.briefDetails
   const sb = data.shootBrief
-  const moodboard = [...data.briefMoodboardItems].sort((a, b) => a.order - b.order)
+  // Single moodboard source = the Creative & Shot List board; legacy brief-only images
+  // stay a fallback for any project not yet consolidated (see consolidateBriefMoodboard).
+  const moodboardSource = (data.moodboardItems?.length ? data.moodboardItems : data.briefMoodboardItems) ?? []
+  const moodboard = [...moodboardSource].sort((a, b) => a.order - b.order)
   const slots = [...data.dayOfSlots].sort(compareByTimeThenOrder)
   const shots = [...data.shots].sort((a, b) => a.order - b.order)
   const ddays = [...(data.ddayRows ?? [])].sort(compareByTimeThenOrder)
