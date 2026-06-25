@@ -167,8 +167,8 @@ function createDefaultShootProject(name: string, description = ''): ShootProject
   return {
     id: generateId(), name, description,
     createdAt: now(), updatedAt: now(),
-    briefDetails: { shootType: '', concept: '', client: '', location: '', callTime: '', wrapTime: '' },
-    shootBrief: { overview: '', creativeDirection: '', wardrobe: '', hairAndMakeup: '', locations: '', additionalNotes: '' },
+    briefDetails: { shootType: '', concept: '', client: '', collection: '', location: '', shootDate: '', callTime: '', wrapTime: '' },
+    shootBrief: { overview: '', campaignMessaging: '', creativeDirection: '', wardrobe: '', hairAndMakeup: '', locations: '', additionalNotes: '' },
     wardrobeImages: [], hairAndMakeupImages: [], locationsImages: [],
     products: [], stylings: [], productCategories: ['Apparel', 'Accessories', 'Footwear', 'Skincare', 'Fragrance'],
     tasks: [], milestones: [], dayOfSlots: [],

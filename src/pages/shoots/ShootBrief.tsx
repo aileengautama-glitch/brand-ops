@@ -23,6 +23,7 @@ const BRIEF_SECTIONS: {
   imageSection?: ImageSection
 }[] = [
   { key: 'overview',          label: 'Overview',           placeholder: 'Describe the overall concept and objectives of the shoot…' },
+  { key: 'campaignMessaging', label: 'Campaign Messaging', placeholder: 'Key messaging, campaign narrative, and brand story…' },
   { key: 'creativeDirection', label: 'Creative Direction', placeholder: 'Describe the visual references, tone, mood, and aesthetic direction…' },
   { key: 'wardrobe',          label: 'Wardrobe',           placeholder: 'Describe wardrobe pieces, styling direction, and any specific requirements…', imageSection: 'wardrobe' },
   { key: 'hairAndMakeup',     label: 'Hair & Make-Up',     placeholder: 'Describe the HMU direction, product requirements, and references…', imageSection: 'hairAndMakeup' },
@@ -167,7 +168,7 @@ export default function ShootBrief() {
         <PageSection key={key} label={label}>
           <div className="bg-white border border-surface-3 rounded p-3 min-h-[80px]">
             <InlineEdit
-              value={project.shootBrief[key]}
+              value={project.shootBrief[key] ?? ''}
               onSave={(v) => updateShootBrief(id, { [key]: v })}
               placeholder={placeholder}
               multiline

@@ -91,7 +91,7 @@ export default function ShootCreative() {
 
   const handleAddShot = () => {
     const nextId = shotId.trim() || `S${String(sortedShots.length + 1).padStart(2, '0')}`
-    addShot(id, { shotId: nextId, name: shotName.trim(), description: '', notes: '', imageId: '' })
+    addShot(id, { shotId: nextId, name: shotName.trim(), description: '', location: '', notes: '', imageId: '' })
     setShotId('')
     setShotName('')
     setShowShotForm(false)

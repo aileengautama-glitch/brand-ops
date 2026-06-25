@@ -119,6 +119,13 @@ export default function ShotRow({ shot, isFirst, isLast, onUpdate, onRemove, onM
                 </div>
 
                 <div className="space-y-1">
+                  <label className="text-2xs uppercase tracking-wide text-ink-faint block">Location / Set</label>
+                  <input type="text" value={shot.location ?? ''} readOnly={readOnly}
+                    onChange={(e) => onUpdate({ location: e.target.value })}
+                    placeholder="e.g. Outdoors / Plains" className={inputCls} />
+                </div>
+
+                <div className="space-y-1">
                   <label className="text-2xs uppercase tracking-wide text-ink-faint block">Description</label>
                   <textarea value={shot.description} readOnly={readOnly}
                     onChange={(e) => onUpdate({ description: e.target.value })}

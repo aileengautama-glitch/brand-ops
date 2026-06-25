@@ -195,13 +195,16 @@ export function createSeedShootProjects(): ShootProject[] {
         shootType: 'Editorial + E-commerce',
         concept: 'Architectural minimalism — Solitude',
         client: 'Brand Creative',
+        collection: 'A/W 26',
         location: 'Studio Neutral, Berlin',
+        shootDate: '22 August 2026',
         callTime: '07:30',
         wrapTime: '18:00',
       },
 
       shootBrief: {
         overview: 'AW26 Campaign "Solitude" — a study in architectural restraint and human presence within minimalist environments. The collection speaks through texture, proportion, and stillness. Every frame should feel considered, not accidental.',
+        campaignMessaging: 'Solitude is not absence — it is presence, distilled. AW26 invites the wearer into considered stillness: architectural restraint, warm neutrals, and the quiet power of standing apart.',
         creativeDirection: 'References: Agnes Martin, Tadao Ando, Hiroshi Sugimoto. Tone: quiet power. Palette: warm neutrals against stark geometry. Movement should feel controlled and intentional — no dynamic action. Models hold space, they do not perform.',
         wardrobe: 'Full AW26 collection supplied by brand. Key pieces: oversized wool coats, structured tailoring, textured knitwear. Shoes to be confirmed — clean minimal forms only, no visible branding. All garments pressed and steamed morning of shoot. Stylist to have one rail per model.',
         hairAndMakeup: 'Hair: sleek, architectural. No ornaments. Skin: natural, luminous, second-skin finish — no heavy contour or strong lip. Consistent look across all models. Reference images to be sent to HMU lead by August 1.',
@@ -325,11 +328,11 @@ export function createSeedShootProjects(): ShootProject[] {
       ],
 
       shots: [
-        { id: generateId(), shotId: 'S01', name: 'Hero silhouette', description: 'Full-length hero shot. Model against clean white cyclorama. Strong silhouette of key outerwear piece. Minimal movement.', notes: 'Overexpose slightly for airy, minimal feel.', imageId: '', order: 0 },
-        { id: generateId(), shotId: 'S02', name: 'Texture close-up', description: 'Macro detail shots of key fabrications and trims. No model. Pure product focus — knitwear stitch, coat lapel, trouser break.', notes: 'Use macro lens. Minimum 3 selects per garment.', imageId: '', order: 1 },
-        { id: generateId(), shotId: 'S03', name: 'Movement series', description: 'Dynamic shots with controlled architectural movement. Layered looks. Model walks within defined spatial frame — no spontaneous posing.', notes: 'Use continuous shooting. Edit for deliberate stillness in post.', imageId: '', order: 2 },
-        { id: generateId(), shotId: 'S04', name: 'Group composition', description: 'Multi-model structured group framing. All three models. Geometric arrangement. No eye contact with camera.', notes: 'Key reference: Irving Penn group studies.', imageId: '', order: 3 },
-        { id: generateId(), shotId: 'S05', name: 'Campaign signature', description: 'Outdoor rooftop. Sunset light. Single model with key collection piece. Campaign-defining image — must feel iconic.', notes: 'Golden hour window 16:30–17:30. Have everything pre-set before light hits.', imageId: '', order: 4 },
+        { id: generateId(), shotId: 'S01', name: 'Hero silhouette', description: 'Full-length hero shot. Model against clean white cyclorama. Strong silhouette of key outerwear piece. Minimal movement.', location: 'Studio — White Cyc', notes: 'Overexpose slightly for airy, minimal feel.', imageId: '', order: 0 },
+        { id: generateId(), shotId: 'S02', name: 'Texture close-up', description: 'Macro detail shots of key fabrications and trims. No model. Pure product focus — knitwear stitch, coat lapel, trouser break.', location: 'Studio — Product', notes: 'Use macro lens. Minimum 3 selects per garment.', imageId: '', order: 1 },
+        { id: generateId(), shotId: 'S03', name: 'Movement series', description: 'Dynamic shots with controlled architectural movement. Layered looks. Model walks within defined spatial frame — no spontaneous posing.', location: 'Studio — Main Space', notes: 'Use continuous shooting. Edit for deliberate stillness in post.', imageId: '', order: 2 },
+        { id: generateId(), shotId: 'S04', name: 'Group composition', description: 'Multi-model structured group framing. All three models. Geometric arrangement. No eye contact with camera.', location: 'Studio — Main Space', notes: 'Key reference: Irving Penn group studies.', imageId: '', order: 3 },
+        { id: generateId(), shotId: 'S05', name: 'Campaign signature', description: 'Outdoor rooftop. Sunset light. Single model with key collection piece. Campaign-defining image — must feel iconic.', location: 'Rooftop — Sunset', notes: 'Golden hour window 16:30–17:30. Have everything pre-set before light hits.', imageId: '', order: 4 },
       ],
 
       ddayRows: [

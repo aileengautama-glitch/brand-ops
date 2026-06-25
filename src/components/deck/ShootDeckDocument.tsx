@@ -52,9 +52,11 @@ export default function ShootDeckDocument({ data }: { data: ShootDeckData }) {
   const hmuImages = data.hairAndMakeupImages ?? []
 
   const hasCreative =
-    !!sb.creativeDirection || !!sb.wardrobe || wardrobeImages.length > 0 ||
+    !!sb.creativeDirection || !!sb.campaignMessaging || !!sb.wardrobe || wardrobeImages.length > 0 ||
     !!sb.hairAndMakeup || hmuImages.length > 0 || !!sb.locations
+  const creativeImages = [...wardrobeImages, ...hmuImages]
   const hasCrewModels = data.crewMembers.length > 0 || data.models.length > 0
+  const shotGroups = groupShotsByLocation(shots)
   const ddayPages = chunk(ddays, REFS_PER_PAGE)
   // Every D-Day reference image (primary + extras), flattened for the contact sheet.
   const allRefImageIds = ddays.flatMap((r) => [r.imageId, ...(r.referenceImageIds ?? [])]).filter(Boolean)
@@ -70,16 +72,17 @@ export default function ShootDeckDocument({ data }: { data: ShootDeckData }) {
               <p className="!text-2xs font-bold uppercase tracking-[0.2em] text-ink-faint mb-1">Shoot Brief</p>
               <h1 className="!text-3xl font-bold text-ink leading-tight">{data.name}</h1>
             </div>
-            {bd.client && (
+            {bd.collection && (
               <div className="text-right shrink-0">
                 <span className="!text-2xs font-bold uppercase tracking-[0.14em] text-ink-faint block">Collection</span>
-                <span className="text-sm font-medium text-ink">{bd.client}</span>
+                <span className="text-sm font-medium text-ink">{bd.collection}</span>
               </div>
             )}
           </div>
           {data.description && <p className="text-sm text-ink-muted mt-2">{data.description}</p>}
           <div className="grid grid-cols-2 gap-x-6 gap-y-1 mt-3 max-w-md">
             {bd.shootType && <Meta label="Type" value={bd.shootType} />}
+            {bd.shootDate && <Meta label="Date" value={bd.shootDate} />}
             {bd.location && <Meta label="Location" value={bd.location} />}
             {(bd.callTime || bd.wrapTime) && (
               <Meta label="Time" value={`${bd.callTime || '—'} → ${bd.wrapTime || '—'}`} />
@@ -157,30 +160,53 @@ export default function ShootDeckDocument({ data }: { data: ShootDeckData }) {
         </DeckPage>
       )}
 
-      {/* ── Page 3 — Creative ───────────────────────────────────────────── */}
+      {/* ── Page 3 — Creative (2-col: text left · creative direction + refs right) ── */}
       {hasCreative && (
         <DeckPage>
-          <BriefTextSection label="Creative Direction" text={sb.creativeDirection} />
-          <BriefTextSection label="Styling" text={sb.wardrobe} images={wardrobeImages} />
-          <BriefTextSection label="Hair & Make-Up" text={sb.hairAndMakeup} images={hmuImages} />
-          <BriefTextSection label="Location" text={sb.locations} />
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <BriefTextSection label="Campaign Messaging" text={sb.campaignMessaging} />
+              <BriefTextSection label="Styling" text={sb.wardrobe} />
+              <BriefTextSection label="Hair & Make-Up" text={sb.hairAndMakeup} />
+              <BriefTextSection label="Location" text={sb.locations} />
+            </div>
+            <div>
+              <BriefTextSection label="Creative Direction" text={sb.creativeDirection} />
+              {creativeImages.length > 0 && (
+                <div className="grid grid-cols-2 gap-2">
+                  {creativeImages.map((item) => <BriefImage key={item.id} item={item} />)}
+                </div>
+              )}
+            </div>
+          </div>
         </DeckPage>
       )}
 
-      {/* ── Page 4 — Shot List ──────────────────────────────────────────── */}
+      {/* ── Page 4 — Shot List (grouped by location / set) ───────────────── */}
       {shots.length > 0 && (
         <DeckPage>
           <h2 className={H2}>Shot List</h2>
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr className="border-b-2 border-ink">
-                <th className="text-left text-xs font-semibold text-ink py-1.5 pr-4 w-16">ID</th>
-                <th className="text-left text-xs font-semibold text-ink py-1.5 pr-4 w-40">Shot name</th>
-                <th className="text-left text-xs font-semibold text-ink py-1.5">Description</th>
-              </tr>
-            </thead>
-            <tbody>{shots.map((shot) => <ShotRow key={shot.id} shot={shot} />)}</tbody>
-          </table>
+          <div className="space-y-5">
+            {shotGroups.map((group) => (
+              <section key={group.location || '—'} className="no-page-break">
+                {group.location && (
+                  <p className="!text-2xs font-bold uppercase tracking-[0.12em] text-ink-secondary mb-1.5">
+                    Location / Set: {group.location}
+                  </p>
+                )}
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="border-b-2 border-ink">
+                      <th className="text-left text-xs font-semibold text-ink py-1.5 pr-4 w-16">ID</th>
+                      <th className="text-left text-xs font-semibold text-ink py-1.5 pr-4 w-40">Shot name</th>
+                      <th className="text-left text-xs font-semibold text-ink py-1.5">Description</th>
+                    </tr>
+                  </thead>
+                  <tbody>{group.shots.map((shot) => <ShotRow key={shot.id} shot={shot} />)}</tbody>
+                </table>
+              </section>
+            ))}
+          </div>
         </DeckPage>
       )}
 
@@ -214,6 +240,20 @@ function chunk<T>(arr: T[], size: number): T[][] {
   const out: T[][] = []
   for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size))
   return out
+}
+
+// Group shots by location/set, preserving first-appearance order (shots arrive
+// pre-sorted by order). Shots with no location fall into a single leading ''-group
+// (rendered without a heading), so the page degrades to a flat list when unset.
+function groupShotsByLocation(shots: Shot[]): { location: string; shots: Shot[] }[] {
+  const groups: { location: string; shots: Shot[] }[] = []
+  for (const shot of shots) {
+    const loc = shot.location || ''
+    let g = groups.find((x) => x.location === loc)
+    if (!g) { g = { location: loc, shots: [] }; groups.push(g) }
+    g.shots.push(shot)
+  }
+  return groups
 }
 
 // ─── Page wrapper ─────────────────────────────────────────────────────────────

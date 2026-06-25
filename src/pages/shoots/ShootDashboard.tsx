@@ -77,14 +77,16 @@ export default function ShootDashboard() {
                 ['Shoot type', 'shootType'],
                 ['Concept', 'concept'],
                 ['Client', 'client'],
+                ['Collection', 'collection'],
                 ['Location', 'location'],
+                ['Shoot date', 'shootDate'],
                 ['Call time', 'callTime'],
                 ['Wrap time', 'wrapTime'],
               ] as [string, keyof typeof bd][]).map(([label, key]) => (
                 <div key={key} className="flex gap-2 text-sm border-b border-surface-3 pb-1.5">
                   <span className="text-ink-faint w-24 shrink-0">{label}</span>
                   <InlineEdit
-                    value={bd[key]}
+                    value={bd[key] ?? ''}
                     onSave={(v) => updateBriefDetails(id, { [key]: v })}
                     placeholder="—"
                     textClassName="text-sm text-ink-secondary"

@@ -43,6 +43,7 @@ export interface Shot {
   shotId: string        // user-defined code, e.g. 'S01'
   name: string
   description: string
+  location: string      // location/set, e.g. 'Outdoors / Plains' — deck shot-list groups by this
   notes: string
   imageId: string       // IndexedDB key for reference image
   order: number
@@ -66,13 +67,16 @@ export interface ShootBriefDetails {
   shootType: string
   concept: string
   client: string
+  collection: string    // e.g. 'S/S 27', 'A/W 26' — shown on dashboard + deck cover title
   location: string
+  shootDate: string      // free-text date, e.g. '12 January 2027' — deck cover meta
   callTime: string
   wrapTime: string
 }
 
 export interface ShootBriefSection {
   overview: string
+  campaignMessaging: string  // campaign narrative / messaging — deck creative page
   creativeDirection: string
   wardrobe: string
   hairAndMakeup: string
