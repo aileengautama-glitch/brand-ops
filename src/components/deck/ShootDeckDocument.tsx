@@ -16,11 +16,12 @@
  * auto-flow across pages is the deferred Paged.js layer.
  *
  * Page order tracks the supplied brief-deck template:
- *   1 Cover — title/meta · moodboard · overview · notes
- *   2 Crew & Models
+ *   1 Cover — title/meta · moodboard · 2-col: overview+notes / brief D-Day schedule (time·activity·PIC)
+ *   2 Crew & Models (models 2-up)
  *   3 Creative — creative direction · styling · hair & make-up · location
- *   4 Schedule & Shot List — brief day schedule (w/ duration) · concept shot list
- *   5 Shot List & References — scheduled shots with imagery (split across pages)
+ *   4 Shot List — ID · name · description
+ *   5 Shot List & References — per-shot rows with imagery (split across pages)
+ *   6 Shot List References — plain contact sheet of every reference image ("Both" mode)
  */
 import type { ReactNode } from 'react'
 import { useStoredImage } from '@/hooks/useImageStorage'
@@ -34,6 +35,10 @@ const H2 = '!text-2xs font-bold uppercase tracking-[0.14em] text-ink-faint mb-3'
 // References rows per A4 page (each row carries up to a few thumbnails). Keeps each
 // page within bounds so nothing is clipped and the preview matches the PDF.
 const REFS_PER_PAGE = 3
+
+// Reference contact-sheet thumbnails per A4 page (6-col grid) — the plain image
+// wall appended after the structured per-shot reference rows ("Both" mode).
+const CONTACT_PER_PAGE = 30
 
 export default function ShootDeckDocument({ data }: { data: ShootDeckData }) {
   const bd = data.briefDetails
@@ -49,27 +54,38 @@ export default function ShootDeckDocument({ data }: { data: ShootDeckData }) {
   const hasCreative =
     !!sb.creativeDirection || !!sb.wardrobe || wardrobeImages.length > 0 ||
     !!sb.hairAndMakeup || hmuImages.length > 0 || !!sb.locations
-  const hasSchedule = slots.length > 0 || shots.length > 0
   const hasCrewModels = data.crewMembers.length > 0 || data.models.length > 0
   const ddayPages = chunk(ddays, REFS_PER_PAGE)
+  // Every D-Day reference image (primary + extras), flattened for the contact sheet.
+  const allRefImageIds = ddays.flatMap((r) => [r.imageId, ...(r.referenceImageIds ?? [])]).filter(Boolean)
+  const contactSheetPages = chunk(allRefImageIds, CONTACT_PER_PAGE)
 
   return (
     <div className="print-area deck-doc">
       {/* ── Page 1 — Cover ──────────────────────────────────────────────── */}
       <DeckPage>
-        <div className="border-b-2 border-ink pb-4 mb-6">
-          <p className="!text-2xs font-bold uppercase tracking-[0.2em] text-ink-faint mb-1">Shoot Brief</p>
-          <h1 className="!text-3xl font-bold text-ink leading-tight">{data.name}</h1>
-          {data.description && <p className="text-sm text-ink-muted mt-1">{data.description}</p>}
-          <div className="flex flex-wrap gap-x-6 gap-y-1 mt-3">
-            {bd.shootType && <Meta label="Type" value={bd.shootType} />}
-            {bd.client && <Meta label="Collection" value={bd.client} />}
-            {bd.location && <Meta label="Location" value={bd.location} />}
-            {(bd.callTime || bd.wrapTime) && (
-              <Meta label="Call / Wrap" value={`${bd.callTime || '—'} → ${bd.wrapTime || '—'}`} />
+        <header className="border-b-2 border-ink pb-4 mb-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="!text-2xs font-bold uppercase tracking-[0.2em] text-ink-faint mb-1">Shoot Brief</p>
+              <h1 className="!text-3xl font-bold text-ink leading-tight">{data.name}</h1>
+            </div>
+            {bd.client && (
+              <div className="text-right shrink-0">
+                <span className="!text-2xs font-bold uppercase tracking-[0.14em] text-ink-faint block">Collection</span>
+                <span className="text-sm font-medium text-ink">{bd.client}</span>
+              </div>
             )}
           </div>
-        </div>
+          {data.description && <p className="text-sm text-ink-muted mt-2">{data.description}</p>}
+          <div className="grid grid-cols-2 gap-x-6 gap-y-1 mt-3 max-w-md">
+            {bd.shootType && <Meta label="Type" value={bd.shootType} />}
+            {bd.location && <Meta label="Location" value={bd.location} />}
+            {(bd.callTime || bd.wrapTime) && (
+              <Meta label="Time" value={`${bd.callTime || '—'} → ${bd.wrapTime || '—'}`} />
+            )}
+          </div>
+        </header>
 
         {moodboard.length > 0 && (
           <section className="no-page-break mb-6">
@@ -80,8 +96,27 @@ export default function ShootDeckDocument({ data }: { data: ShootDeckData }) {
           </section>
         )}
 
-        <BriefTextSection label="Overview" text={sb.overview} />
-        <BriefTextSection label="Notes" text={sb.additionalNotes} />
+        <div className="grid grid-cols-2 gap-6">
+          <div>
+            <BriefTextSection label="Overview" text={sb.overview} />
+            <BriefTextSection label="Notes" text={sb.additionalNotes} />
+          </div>
+          {slots.length > 0 && (
+            <section className="no-page-break">
+              <h2 className={H2}>Brief D-Day Schedule</h2>
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b-2 border-ink">
+                    <th className="text-left text-xs font-semibold text-ink py-1.5 pr-3 w-24">Time</th>
+                    <th className="text-left text-xs font-semibold text-ink py-1.5 pr-3">Activity</th>
+                    <th className="text-left text-xs font-semibold text-ink py-1.5 w-20">PIC</th>
+                  </tr>
+                </thead>
+                <tbody>{slots.map((slot) => <SlotRow key={slot.id} slot={slot} />)}</tbody>
+              </table>
+            </section>
+          )}
+        </div>
       </DeckPage>
 
       {/* ── Page 2 — Crew & Models ──────────────────────────────────────── */}
@@ -114,7 +149,7 @@ export default function ShootDeckDocument({ data }: { data: ShootDeckData }) {
           {data.models.length > 0 && (
             <section className="no-page-break">
               <h2 className={H2}>Models</h2>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 {data.models.map((model) => <ModelCard key={model.id} model={model} />)}
               </div>
             </section>
@@ -132,40 +167,20 @@ export default function ShootDeckDocument({ data }: { data: ShootDeckData }) {
         </DeckPage>
       )}
 
-      {/* ── Page 4 — Schedule & Concept Shot List ───────────────────────── */}
-      {hasSchedule && (
+      {/* ── Page 4 — Shot List ──────────────────────────────────────────── */}
+      {shots.length > 0 && (
         <DeckPage>
-          {slots.length > 0 && (
-            <section className="no-page-break mb-8">
-              <h2 className={H2}>Brief Day Schedule</h2>
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="border-b-2 border-ink">
-                    <th className="text-left text-xs font-semibold text-ink py-1.5 pr-4 w-24">Time</th>
-                    <th className="text-left text-xs font-semibold text-ink py-1.5 pr-4 w-16">Duration</th>
-                    <th className="text-left text-xs font-semibold text-ink py-1.5 pr-4">Activity</th>
-                    <th className="text-left text-xs font-semibold text-ink py-1.5 w-28">PIC</th>
-                  </tr>
-                </thead>
-                <tbody>{slots.map((slot) => <SlotRow key={slot.id} slot={slot} />)}</tbody>
-              </table>
-            </section>
-          )}
-
-          {shots.length > 0 && (
-            <section className="no-page-break">
-              <h2 className={H2}>Shot List</h2>
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="border-b-2 border-ink">
-                    <th className="text-left text-xs font-semibold text-ink py-1.5 pr-4 w-16">ID</th>
-                    <th className="text-left text-xs font-semibold text-ink py-1.5">Shot name</th>
-                  </tr>
-                </thead>
-                <tbody>{shots.map((shot) => <ShotRow key={shot.id} shot={shot} />)}</tbody>
-              </table>
-            </section>
-          )}
+          <h2 className={H2}>Shot List</h2>
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="border-b-2 border-ink">
+                <th className="text-left text-xs font-semibold text-ink py-1.5 pr-4 w-16">ID</th>
+                <th className="text-left text-xs font-semibold text-ink py-1.5 pr-4 w-40">Shot name</th>
+                <th className="text-left text-xs font-semibold text-ink py-1.5">Description</th>
+              </tr>
+            </thead>
+            <tbody>{shots.map((shot) => <ShotRow key={shot.id} shot={shot} />)}</tbody>
+          </table>
         </DeckPage>
       )}
 
@@ -177,6 +192,16 @@ export default function ShootDeckDocument({ data }: { data: ShootDeckData }) {
             {group.map((row) => (
               <DDayDeckRow key={row.id} row={row} stylings={stylings} models={data.models} />
             ))}
+          </div>
+        </DeckPage>
+      ))}
+
+      {/* ── Contact sheet — plain grid of every reference image ("Both" mode) ── */}
+      {contactSheetPages.map((group, i) => (
+        <DeckPage key={`contact-${i}`}>
+          <h2 className={H2}>Shot List References{contactSheetPages.length > 1 ? ` (${i + 1}/${contactSheetPages.length})` : ''}</h2>
+          <div className="grid grid-cols-6 gap-2">
+            {group.map((iid, idx) => <DeckRefThumb key={`${iid}-${idx}`} imageId={iid} />)}
           </div>
         </DeckPage>
       ))}
@@ -246,8 +271,9 @@ function BriefImage({ item }: { item: MoodboardItem }) {
 function ShotRow({ shot }: { shot: Shot }) {
   return (
     <tr>
-      <td className="py-1.5 pr-4 border-b border-surface-3 font-mono text-xs text-ink-secondary">{shot.shotId || '—'}</td>
-      <td className="py-1.5 border-b border-surface-3 font-medium text-ink">{shot.name}</td>
+      <td className="py-1.5 pr-4 border-b border-surface-3 font-mono text-xs text-ink-secondary align-top">{shot.shotId || '—'}</td>
+      <td className="py-1.5 pr-4 border-b border-surface-3 font-medium text-ink align-top">{shot.name}</td>
+      <td className="py-1.5 border-b border-surface-3 text-ink-muted align-top">{shot.description || '—'}</td>
     </tr>
   )
 }
@@ -256,10 +282,9 @@ function SlotRow({ slot }: { slot: DayOfSlot }) {
   const timeStr = [slot.timeStart, slot.timeEnd].filter(Boolean).join(' – ')
   return (
     <tr>
-      <td className="py-1.5 pr-4 border-b border-surface-3 text-ink-secondary whitespace-nowrap">{timeStr || '—'}</td>
-      <td className="py-1.5 pr-4 border-b border-surface-3 text-ink-muted whitespace-nowrap">{durationLabel(slot.timeStart, slot.timeEnd) || '—'}</td>
-      <td className="py-1.5 pr-4 border-b border-surface-3 text-ink">{slot.activity}</td>
-      <td className="py-1.5 border-b border-surface-3 text-ink-muted">{slot.owner || '—'}</td>
+      <td className="py-1 pr-3 border-b border-surface-3 text-ink-secondary whitespace-nowrap align-top">{timeStr || '—'}</td>
+      <td className="py-1 pr-3 border-b border-surface-3 text-ink align-top">{slot.activity}</td>
+      <td className="py-1 border-b border-surface-3 text-ink-muted align-top">{slot.owner || '—'}</td>
     </tr>
   )
 }
