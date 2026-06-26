@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS products (
   name        text        NOT NULL DEFAULT '',
   category    text        NOT NULL DEFAULT '',
   ownership   text        NOT NULL DEFAULT '' CHECK (ownership IN ('own', 'outsource', '')),
-  image_id    text        NOT NULL DEFAULT '',     -- media/IndexedDB key (soft ref)
+  image_id    text        NOT NULL DEFAULT '',     -- FITTING image — media/IndexedDB key (soft ref)
+  flatlay_image_id text   NOT NULL DEFAULT '',     -- FLATLAY image — media/IndexedDB key (soft ref)
   usps        jsonb       NOT NULL DEFAULT '[]'::jsonb,
   sort_order  bigint      NOT NULL DEFAULT 0,
   created_at  timestamptz NOT NULL DEFAULT now(),
