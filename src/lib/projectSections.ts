@@ -13,7 +13,7 @@
  * content shape is always { items: [...] } holding the full array (row ids,
  * order, and links preserved).
  */
-import type { ShootProject, Shot, DDayTimelineRow } from '@/types/shoot'
+import type { ShootProject, Shot, DDayTimelineRow, LogisticsItem } from '@/types/shoot'
 import type { EventProject } from '@/types/event'
 import type { TimelineMilestone, Decision, DayOfSlot } from '@/types/common'
 import { useShootStore } from '@/store/useShootStore'
@@ -64,6 +64,11 @@ export const SHOOT_SECTIONS: ShootSectionDescriptor[] = [
     section: 'shoot_decisions',
     build:   (p) => ({ items: p.decisions ?? [] }),
     apply:   (projectId, items) => useShootStore.getState().setDecisions(projectId, items as Decision[]),
+  },
+  {
+    section: 'shoot_logistics',
+    build:   (p) => ({ items: p.logisticsItems ?? [] }),
+    apply:   (projectId, items) => useShootStore.getState().setLogisticsItems(projectId, items as LogisticsItem[]),
   },
 ]
 export const EVENT_SECTIONS: EventSectionDescriptor[] = [

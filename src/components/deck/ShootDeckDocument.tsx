@@ -56,7 +56,7 @@ export default function ShootDeckDocument({ data }: { data: ShootDeckData }) {
 
   const hasCreative =
     !!sb.creativeDirection || !!sb.campaignMessaging || !!sb.wardrobe || wardrobeImages.length > 0 ||
-    !!sb.hairAndMakeup || hmuImages.length > 0 || !!sb.locations
+    !!sb.hairAndMakeup || !!sb.nails || hmuImages.length > 0 || !!sb.locations
   const creativeImages = [...wardrobeImages, ...hmuImages]
   const hasCrewModels = data.crewMembers.length > 0 || data.models.length > 0
   const shotGroups = groupShotsByLocation(shots)
@@ -171,6 +171,7 @@ export default function ShootDeckDocument({ data }: { data: ShootDeckData }) {
               <BriefTextSection label="Campaign Messaging" text={sb.campaignMessaging} />
               <BriefTextSection label="Styling" text={sb.wardrobe} />
               <BriefTextSection label="Hair & Make-Up" text={sb.hairAndMakeup} />
+              <BriefTextSection label="Nails (fingers & toes)" text={sb.nails} />
               <BriefTextSection label="Location" text={sb.locations} />
             </div>
             <div>

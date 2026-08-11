@@ -22,6 +22,8 @@ export interface CrewMember {
   contact: string
   notes: string
   createdAt: string
+  /** Dietary requirement — collected up front so catering can be arranged. */
+  dietary?: string
 }
 
 export interface Model {
@@ -37,6 +39,12 @@ export interface Model {
   generalMeasurements: string  // free-text
   notes: string
   createdAt: string
+  // ── Call-sheet essentials (optional → legacy rows unchanged) ──
+  /** DIRECT mobile — needed for early calls when the agent is unreachable. */
+  mobile?: string
+  /** Flight/travel times for travelling talent. */
+  flightTimes?: string
+  dietary?: string
 }
 
 /** On-the-day progress of a shot. Ordered not-started → in-progress → complete. */
@@ -81,6 +89,47 @@ export interface DDayTimelineRow {
   order: number
 }
 
+/**
+ * Call-sheet logistics that are present BY DEFAULT, not optional additions —
+ * every one of these was a real failure on a real shoot (no water on location,
+ * no parking info, agents unreachable at 6am, dietaries never collected).
+ */
+export interface CallSheetDetails {
+  /** Paid options, rates, whether pre-booking is needed. */
+  parking: string
+  /** BYO-water instruction — shown even when blank via a default. */
+  waterInstruction: string
+  /** Nearest hospital / medical. */
+  hospital: string
+  /** On-the-day emergency contacts (name + number per line). */
+  emergencyContacts: string
+  /** Who owns problems on the night/day — an unowned shoot day is the failure mode. */
+  onSiteContact: string
+  notes: string
+}
+
+/**
+ * "What to bring / who brings it" — product, props, racks, steamers, robes.
+ * Each needs a person, a vehicle and an arrival time or it doesn't turn up.
+ */
+export interface LogisticsItem {
+  id: string
+  item: string
+  who: string
+  vehicle: string
+  time: string
+  notes: string
+  order: number
+}
+
+/** Items every shoot needs an owner for — seeded so they can't be forgotten. */
+export const DEFAULT_LOGISTICS_ITEMS = [
+  'Product', 'Props', 'Racks', 'Steamers', 'Robes & slippers', 'Catering / breakfast', 'Water',
+]
+
+export const DEFAULT_WATER_INSTRUCTION =
+  'No running water on location — everyone to BYO water. Crew water supplied on set.'
+
 export interface ShootBriefDetails {
   shootType: string
   concept: string
@@ -98,6 +147,8 @@ export interface ShootBriefSection {
   creativeDirection: string
   wardrobe: string
   hairAndMakeup: string
+  /** Nails — fingers AND toes. Explicit because it was missed in a real brief. */
+  nails?: string
   locations: string
   additionalNotes: string
 }
@@ -162,6 +213,10 @@ export interface ShootProject {
   products: Product[]
   stylings: Styling[]
   productCategories: string[]
+
+  // Call sheet logistics + safety (optional → legacy projects unaffected)
+  callSheet?: CallSheetDetails
+  logisticsItems?: LogisticsItem[]
 
   // Data collections
   tasks: Task[]

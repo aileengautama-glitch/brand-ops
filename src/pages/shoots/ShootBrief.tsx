@@ -27,6 +27,7 @@ const BRIEF_SECTIONS: {
   { key: 'creativeDirection', label: 'Creative Direction', placeholder: 'Describe the visual references, tone, mood, and aesthetic direction…' },
   { key: 'wardrobe',          label: 'Wardrobe',           placeholder: 'Describe wardrobe pieces, styling direction, and any specific requirements…', imageSection: 'wardrobe' },
   { key: 'hairAndMakeup',     label: 'Hair & Make-Up',     placeholder: 'Describe the HMU direction, product requirements, and references…', imageSection: 'hairAndMakeup' },
+  { key: 'nails',             label: 'Nails (fingers & toes)', placeholder: 'Colour, length, shape — for BOTH fingers and toes. Brief this explicitly to H&MU.' },
   { key: 'locations',         label: 'Locations',          placeholder: 'List shoot locations, access requirements, and timing notes…', imageSection: 'locations' },
   { key: 'additionalNotes',   label: 'Additional Notes',   placeholder: 'Any other information the crew and talent need to know…' },
 ]

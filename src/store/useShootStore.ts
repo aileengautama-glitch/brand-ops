@@ -3,7 +3,9 @@ import { persist } from 'zustand/middleware'
 import type {
   ShootProject, CrewMember, Model, Shot, DDayTimelineRow,
   ShootBriefDetails, ShootBriefSection, Product, ProductUSP, Styling, Prop,
+  CallSheetDetails, LogisticsItem,
 } from '@/types/shoot'
+import { DEFAULT_LOGISTICS_ITEMS, DEFAULT_WATER_INSTRUCTION } from '@/types/shoot'
 import type {
   Task, TimelineMilestone, Decision, DayOfSlot, BudgetItem,
   Vendor, MoodboardItem, Tag, ColourSwatch,
@@ -56,6 +58,15 @@ interface ShootStoreState {
   removeMilestone: (projectId: string, id: string) => void
   moveMilestone: (projectId: string, id: string, direction: 'up' | 'down') => void
   reorderMilestones: (projectId: string, orderedIds: string[]) => void
+
+  // ── Call sheet logistics ────────────────────────────────────────────────────
+  updateCallSheet: (projectId: string, patch: Partial<CallSheetDetails>) => void
+  addLogisticsItem: (projectId: string, data: Omit<LogisticsItem, 'id' | 'order'>) => void
+  updateLogisticsItem: (projectId: string, id: string, patch: Partial<LogisticsItem>) => void
+  removeLogisticsItem: (projectId: string, id: string) => void
+  setLogisticsItems: (projectId: string, logisticsItems: LogisticsItem[]) => void
+  /** Seed the default who-brings-what rows once, when none exist yet. */
+  seedLogisticsDefaults: (projectId: string) => void
 
   // ── Decisions (approval queue) ──────────────────────────────────────────────
   addDecision: (projectId: string, data: Omit<Decision, 'id' | 'order' | 'createdAt'>) => void
@@ -173,14 +184,30 @@ interface ShootStoreState {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+/** Call-sheet defaults — the water instruction ships filled in, not blank. */
+function defaultCallSheet(): CallSheetDetails {
+  return {
+    parking: '',
+    waterInstruction: DEFAULT_WATER_INSTRUCTION,
+    hospital: '',
+    emergencyContacts: '',
+    onSiteContact: '',
+    notes: '',
+  }
+}
+
 function createDefaultShootProject(name: string, description = ''): ShootProject {
   return {
     id: generateId(), name, description,
     createdAt: now(), updatedAt: now(),
     briefDetails: { shootType: '', concept: '', client: '', collection: '', location: '', shootDate: '', callTime: '', wrapTime: '' },
-    shootBrief: { overview: '', campaignMessaging: '', creativeDirection: '', wardrobe: '', hairAndMakeup: '', locations: '', additionalNotes: '' },
+    shootBrief: { overview: '', campaignMessaging: '', creativeDirection: '', wardrobe: '', hairAndMakeup: '', nails: '', locations: '', additionalNotes: '' },
     wardrobeImages: [], hairAndMakeupImages: [], locationsImages: [],
     products: [], stylings: [], productCategories: ['Apparel', 'Accessories', 'Footwear', 'Skincare', 'Fragrance'],
+    callSheet: defaultCallSheet(),
+    logisticsItems: DEFAULT_LOGISTICS_ITEMS.map((item, i) => ({
+      id: generateId(), item, who: '', vehicle: '', time: '', notes: '', order: i * 1000,
+    })),
     tasks: [], milestones: [], decisions: [], dayOfSlots: [],
     totalBudget: 0, budgetItems: [], vendors: [],
     crewMembers: [], models: [], shots: [], ddayRows: [],
@@ -292,6 +319,30 @@ export const useShootStore = create<ShootStoreState>()(
           patch(projectId, (p) => ({ milestones: swapOrder(p.milestones, id, direction) })),
         reorderMilestones: (projectId, orderedIds) =>
           patch(projectId, (p) => ({ milestones: reorderByIds(p.milestones, orderedIds) })),
+
+        // ── Call sheet logistics ───────────────────────────────────────────────
+        updateCallSheet: (projectId, cp) =>
+          patch(projectId, (p) => ({ callSheet: { ...defaultCallSheet(), ...(p.callSheet ?? {}), ...cp } })),
+        addLogisticsItem: (projectId, data) => {
+          const item: LogisticsItem = { ...data, id: generateId(), order: Date.now() }
+          patch(projectId, (p) => ({ logisticsItems: [...(p.logisticsItems ?? []), item] }))
+        },
+        updateLogisticsItem: (projectId, id, lp) =>
+          patch(projectId, (p) => ({
+            logisticsItems: (p.logisticsItems ?? []).map((l) => (l.id === id ? { ...l, ...lp } : l)),
+          })),
+        removeLogisticsItem: (projectId, id) =>
+          patch(projectId, (p) => ({ logisticsItems: (p.logisticsItems ?? []).filter((l) => l.id !== id) })),
+        setLogisticsItems: (projectId, logisticsItems) => patch(projectId, () => ({ logisticsItems })),
+        seedLogisticsDefaults: (projectId) =>
+          patch(projectId, (p) => {
+            if ((p.logisticsItems ?? []).length > 0) return {}
+            return {
+              logisticsItems: DEFAULT_LOGISTICS_ITEMS.map((item, i) => ({
+                id: generateId(), item, who: '', vehicle: '', time: '', notes: '', order: i * 1000,
+              })),
+            }
+          }),
 
         // ── Decisions ──────────────────────────────────────────────────────────
         addDecision: (projectId, data) => {
