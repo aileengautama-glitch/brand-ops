@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Plus, Image, LayoutGrid } from 'lucide-react'
+import { Plus, Image, LayoutGrid, List, Columns3 } from 'lucide-react'
 import { useShootStore } from '@/store/useShootStore'
 import { useCurrentShootProject } from '@/hooks/useCurrentProject'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
@@ -9,6 +9,7 @@ import MoodboardGrid from '@/components/creative/MoodboardGrid'
 import TagCloud from '@/components/creative/TagCloud'
 import ColourPalette from '@/components/creative/ColourPalette'
 import ShotRow from '@/components/creative/ShotRow'
+import ShotBoard from '@/components/creative/ShotBoard'
 import EmptyState from '@/components/ui/EmptyState'
 import { inputCls } from '@/components/ui/FormField'
 import MoodboardCompileView, { type MoodboardGroup } from '@/components/creative/MoodboardCompileView'
@@ -60,6 +61,7 @@ export default function ShootCreative() {
   const [shotId, setShotId] = useState('')
   const [shotName, setShotName] = useState('')
   const [showCompile, setShowCompile] = useState(false)
+  const [shotView, setShotView] = useState<'list' | 'board'>('list')
 
   if (!project || !id) return <div className="p-6 text-sm text-ink-muted">Project not found.</div>
 
@@ -91,7 +93,10 @@ export default function ShootCreative() {
 
   const handleAddShot = () => {
     const nextId = shotId.trim() || `S${String(sortedShots.length + 1).padStart(2, '0')}`
-    addShot(id, { shotId: nextId, name: shotName.trim(), description: '', location: '', notes: '', imageId: '' })
+    addShot(id, {
+      shotId: nextId, name: shotName.trim(), description: '', location: '', notes: '', imageId: '',
+      status: 'to_shoot', priority: 'mid', format: 'stills',
+    })
     setShotId('')
     setShotName('')
     setShowShotForm(false)
@@ -160,14 +165,33 @@ export default function ShootCreative() {
       {/* ── Shot List — full width below ─────────────────────────────────────── */}
       <Panel
         title={`Shot List — ${sortedShots.length} shot${sortedShots.length !== 1 ? 's' : ''}`}
-        actions={readOnly ? undefined : (
-          <button
-            onClick={() => setShowShotForm(true)}
-            className="flex items-center gap-1 text-xs text-ink-muted hover:text-ink transition-colors"
-          >
-            <Plus size={12} /> Add shot
-          </button>
-        )}
+        actions={
+          <>
+            {/* List for planning · Board for ticking off on the day */}
+            <div className="flex items-center rounded border border-surface-3 overflow-hidden">
+              {([['list', List], ['board', Columns3]] as const).map(([v, Icon]) => (
+                <button
+                  key={v}
+                  onClick={() => setShotView(v)}
+                  title={v === 'list' ? 'List view' : 'On-day board'}
+                  className={`flex items-center gap-1 px-2 py-1 text-xs transition-colors ${
+                    shotView === v ? 'bg-accent text-white' : 'text-ink-muted hover:bg-surface-2'
+                  }`}
+                >
+                  <Icon size={11} />{v === 'list' ? 'List' : 'On-day'}
+                </button>
+              ))}
+            </div>
+            {!readOnly && (
+              <button
+                onClick={() => setShowShotForm(true)}
+                className="flex items-center gap-1 text-xs text-ink-muted hover:text-ink transition-colors"
+              >
+                <Plus size={12} /> Add shot
+              </button>
+            )}
+          </>
+        }
       >
         {showShotForm && !readOnly && (
           <div className="mb-4 p-3 bg-surface-1 border border-surface-3 rounded space-y-2">
@@ -221,6 +245,12 @@ export default function ShootCreative() {
               </button>
             )}
           />
+        ) : shotView === 'board' ? (
+          <ShotBoard
+            shots={sortedShots}
+            onUpdate={(sid, patch) => updateShot(id, sid, patch)}
+            readOnly={readOnly}
+          />
         ) : (
           <div className="space-y-2">
             {sortedShots.map((shot, i) => (
@@ -239,7 +269,7 @@ export default function ShootCreative() {
           </div>
         )}
 
-        {sortedShots.length > 0 && !showShotForm && !readOnly && (
+        {shotView === 'list' && sortedShots.length > 0 && !showShotForm && !readOnly && (
           <button
             onClick={() => setShowShotForm(true)}
             className="mt-3 flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink transition-colors px-1"

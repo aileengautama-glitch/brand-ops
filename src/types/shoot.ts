@@ -39,6 +39,12 @@ export interface Model {
   createdAt: string
 }
 
+/** On-the-day progress of a shot. Ordered not-started → in-progress → complete. */
+export type ShotStatus = 'to_shoot' | 'shot' | 'skipped' | 'reshoot'
+/** What gets cut first when the day runs behind — hero is protected. */
+export type ShotPriority = 'hero' | 'high' | 'mid' | 'low'
+export type ShotFormat = 'stills' | 'motion' | 'social'
+
 export interface Shot {
   id: string
   shotId: string        // user-defined code, e.g. 'S01'
@@ -48,6 +54,10 @@ export interface Shot {
   notes: string
   imageId: string       // IndexedDB key for reference image
   order: number
+  // ── On-day tracking (optional → legacy shots keep working unchanged) ──
+  status?: ShotStatus    // undefined = 'to_shoot'
+  priority?: ShotPriority
+  format?: ShotFormat
 }
 
 /** A single model's look within one shot: which styling that model wears. */

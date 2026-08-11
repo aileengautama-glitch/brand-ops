@@ -1,7 +1,11 @@
 import { useState } from 'react'
 import { ChevronDown, MessageSquare, Trash2, ArrowUp, ArrowDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { Shot } from '@/types/shoot'
+import type { Shot, ShotStatus, ShotPriority, ShotFormat } from '@/types/shoot'
+import {
+  SHOT_STATUSES, SHOT_STATUS_META, SHOT_PRIORITIES, SHOT_PRIORITY_META,
+  SHOT_FORMATS, SHOT_FORMAT_LABELS, shotStatus,
+} from '@/lib/shotMeta'
 import ImageThumbWithModal from '@/components/ui/ImageThumbWithModal'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import CommentThread from '@/components/ui/CommentThread'
@@ -55,6 +59,19 @@ export default function ShotRow({ shot, isFirst, isLast, onUpdate, onRemove, onM
 
           {/* Name */}
           <span className="flex-1 text-sm text-ink min-w-0 truncate">{shot.name || 'Untitled shot'}</span>
+
+          {/* Format · priority · status — visible at a glance on the day */}
+          {shot.format && (
+            <span className="text-2xs text-ink-faint shrink-0">{SHOT_FORMAT_LABELS[shot.format]}</span>
+          )}
+          {shot.priority && (
+            <span className={cn('text-2xs px-1.5 py-0.5 rounded border shrink-0', SHOT_PRIORITY_META[shot.priority].chip)}>
+              {SHOT_PRIORITY_META[shot.priority].label}
+            </span>
+          )}
+          <span className={cn('text-2xs px-1.5 py-0.5 rounded border shrink-0', SHOT_STATUS_META[shotStatus(shot)].chip)}>
+            {SHOT_STATUS_META[shotStatus(shot)].label}
+          </span>
 
           {/* Reorder */}
           {!readOnly && (
@@ -115,6 +132,36 @@ export default function ShotRow({ shot, isFirst, isLast, onUpdate, onRemove, onM
                     <label className="text-2xs uppercase tracking-wide text-ink-faint block">Name</label>
                     <input type="text" value={shot.name} readOnly={readOnly}
                       onChange={(e) => onUpdate({ name: e.target.value })} className={inputCls} />
+                  </div>
+                </div>
+
+                {/* On-day tracking */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-2xs uppercase tracking-wide text-ink-faint block">Status</label>
+                    <select value={shotStatus(shot)} disabled={readOnly}
+                      onChange={(e) => onUpdate({ status: e.target.value as ShotStatus })}
+                      className={inputCls}>
+                      {SHOT_STATUSES.map((s) => <option key={s} value={s}>{SHOT_STATUS_META[s].label}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-2xs uppercase tracking-wide text-ink-faint block">Priority</label>
+                    <select value={shot.priority ?? ''} disabled={readOnly}
+                      onChange={(e) => onUpdate({ priority: (e.target.value || undefined) as ShotPriority | undefined })}
+                      className={inputCls}>
+                      <option value="">—</option>
+                      {SHOT_PRIORITIES.map((p) => <option key={p} value={p}>{SHOT_PRIORITY_META[p].label}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-2xs uppercase tracking-wide text-ink-faint block">Format</label>
+                    <select value={shot.format ?? ''} disabled={readOnly}
+                      onChange={(e) => onUpdate({ format: (e.target.value || undefined) as ShotFormat | undefined })}
+                      className={inputCls}>
+                      <option value="">—</option>
+                      {SHOT_FORMATS.map((f) => <option key={f} value={f}>{SHOT_FORMAT_LABELS[f]}</option>)}
+                    </select>
                   </div>
                 </div>
 
