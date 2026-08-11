@@ -5,7 +5,7 @@ import type {
   ShootBriefDetails, ShootBriefSection, Product, ProductUSP, Styling, Prop,
 } from '@/types/shoot'
 import type {
-  Task, TimelineMilestone, DayOfSlot, BudgetItem,
+  Task, TimelineMilestone, Decision, DayOfSlot, BudgetItem,
   Vendor, MoodboardItem, Tag, ColourSwatch,
 } from '@/types/common'
 import { generateId, now } from '@/lib/utils'
@@ -56,6 +56,12 @@ interface ShootStoreState {
   removeMilestone: (projectId: string, id: string) => void
   moveMilestone: (projectId: string, id: string, direction: 'up' | 'down') => void
   reorderMilestones: (projectId: string, orderedIds: string[]) => void
+
+  // ── Decisions (approval queue) ──────────────────────────────────────────────
+  addDecision: (projectId: string, data: Omit<Decision, 'id' | 'order' | 'createdAt'>) => void
+  updateDecision: (projectId: string, id: string, patch: Partial<Decision>) => void
+  removeDecision: (projectId: string, id: string) => void
+  setDecisions: (projectId: string, decisions: Decision[]) => void
 
   // ── Day-of schedule ─────────────────────────────────────────────────────────
   addDayOfSlot: (projectId: string, data: Omit<DayOfSlot, 'id' | 'order'>) => void
@@ -175,7 +181,7 @@ function createDefaultShootProject(name: string, description = ''): ShootProject
     shootBrief: { overview: '', campaignMessaging: '', creativeDirection: '', wardrobe: '', hairAndMakeup: '', locations: '', additionalNotes: '' },
     wardrobeImages: [], hairAndMakeupImages: [], locationsImages: [],
     products: [], stylings: [], productCategories: ['Apparel', 'Accessories', 'Footwear', 'Skincare', 'Fragrance'],
-    tasks: [], milestones: [], dayOfSlots: [],
+    tasks: [], milestones: [], decisions: [], dayOfSlots: [],
     totalBudget: 0, budgetItems: [], vendors: [],
     crewMembers: [], models: [], shots: [], ddayRows: [],
     moodboardItems: [], briefMoodboardItems: [], tags: [], colours: [], props: [],
@@ -286,6 +292,19 @@ export const useShootStore = create<ShootStoreState>()(
           patch(projectId, (p) => ({ milestones: swapOrder(p.milestones, id, direction) })),
         reorderMilestones: (projectId, orderedIds) =>
           patch(projectId, (p) => ({ milestones: reorderByIds(p.milestones, orderedIds) })),
+
+        // ── Decisions ──────────────────────────────────────────────────────────
+        addDecision: (projectId, data) => {
+          const item: Decision = { ...data, id: generateId(), order: Date.now(), createdAt: now() }
+          patch(projectId, (p) => ({ decisions: [...(p.decisions ?? []), item] }))
+        },
+        updateDecision: (projectId, id, dp) =>
+          patch(projectId, (p) => ({
+            decisions: (p.decisions ?? []).map((d) => (d.id === id ? { ...d, ...dp } : d)),
+          })),
+        removeDecision: (projectId, id) =>
+          patch(projectId, (p) => ({ decisions: (p.decisions ?? []).filter((d) => d.id !== id) })),
+        setDecisions: (projectId, decisions) => patch(projectId, () => ({ decisions })),
 
         // ── Day-of slots ───────────────────────────────────────────────────────
         addDayOfSlot: (projectId, data) => {

@@ -20,6 +20,7 @@ import {
   BookOpen,
   Mail,
   FileCheck,
+  CircleDot,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEventStore } from '@/store/useEventStore'
@@ -48,6 +49,7 @@ const eventNavItems: NavItem[] = [
   { label: 'Creative', path: 'creative', icon: Palette, sectionKey: 'event.creative' },
   { label: 'Collaterals', path: 'collaterals', icon: Layers, sectionKey: 'event.collaterals' },
   { label: 'Props', path: 'props', icon: Box, sectionKey: 'event.props' },
+  { label: 'Decisions', path: 'decisions', icon: CircleDot },
   { label: 'Brief Deck', path: 'brief-deck', icon: FileText },
 ]
 
@@ -79,6 +81,7 @@ const shootNavItems: NavItem[] = [
   { label: 'Creative & Shot List', path: 'creative', icon: Palette, sectionKey: 'shoot.creative' },
   { label: 'Shot Brief', path: 'shot-brief', icon: Camera, sectionKey: 'shoot.brief' },
   { label: 'Call Sheet', path: 'call-sheet', icon: ClipboardList, sectionKey: 'shoot.callsheet' },
+  { label: 'Decisions', path: 'decisions', icon: CircleDot },
   { label: 'Brief Deck', path: 'brief-deck', icon: FileText },
 ]
 

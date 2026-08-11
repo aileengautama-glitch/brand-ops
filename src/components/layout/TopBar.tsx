@@ -205,6 +205,12 @@ export default function TopBar() {
           My Tasks
         </Link>
         <Link
+          to="/decisions"
+          className="flex items-center text-xs text-ink-faint hover:text-ink transition-colors px-2"
+        >
+          Decisions
+        </Link>
+        <Link
           to="/help"
           className="flex items-center text-xs text-ink-faint hover:text-ink transition-colors px-2"
         >

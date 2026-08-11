@@ -15,7 +15,7 @@
  */
 import type { ShootProject, Shot, DDayTimelineRow } from '@/types/shoot'
 import type { EventProject } from '@/types/event'
-import type { TimelineMilestone, DayOfSlot } from '@/types/common'
+import type { TimelineMilestone, Decision, DayOfSlot } from '@/types/common'
 import { useShootStore } from '@/store/useShootStore'
 import { useEventStore } from '@/store/useEventStore'
 
@@ -60,6 +60,11 @@ export const SHOOT_SECTIONS: ShootSectionDescriptor[] = [
     build:   (p) => ({ items: p.ddayRows }),
     apply:   (projectId, items) => useShootStore.getState().setDDayRows(projectId, items as DDayTimelineRow[]),
   },
+  {
+    section: 'shoot_decisions',
+    build:   (p) => ({ items: p.decisions ?? [] }),
+    apply:   (projectId, items) => useShootStore.getState().setDecisions(projectId, items as Decision[]),
+  },
 ]
 export const EVENT_SECTIONS: EventSectionDescriptor[] = [
   {
@@ -71,5 +76,10 @@ export const EVENT_SECTIONS: EventSectionDescriptor[] = [
     section: 'event_schedule',
     build:   (p) => ({ items: p.dayOfSlots }),
     apply:   (projectId, items) => useEventStore.getState().setDayOfSlots(projectId, items as DayOfSlot[]),
+  },
+  {
+    section: 'event_decisions',
+    build:   (p) => ({ items: p.decisions ?? [] }),
+    apply:   (projectId, items) => useEventStore.getState().setDecisions(projectId, items as Decision[]),
   },
 ]

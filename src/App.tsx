@@ -26,6 +26,9 @@ import EventProps from '@/pages/events/EventProps'
 
 // Top-level
 import MyTasks from '@/pages/MyTasks'
+import DecisionQueue from '@/pages/DecisionQueue'
+import ShootDecisions from '@/pages/shoots/ShootDecisions'
+import EventDecisions from '@/pages/events/EventDecisions'
 import Help from '@/pages/Help'
 import Settings from '@/pages/Settings'
 
@@ -93,6 +96,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Home /> },
       { path: 'my-tasks', element: <MyTasks /> },
+      { path: 'decisions', element: <DecisionQueue /> },
       { path: 'help', element: <Help /> },
       { path: 'settings', element: <Settings /> },
 
@@ -108,6 +112,7 @@ const router = createBrowserRouter([
       { path: 'events/:id/creative', element: evtSec('event.creative', <EventCreative />) },
       { path: 'events/:id/collaterals', element: evtSec('event.collaterals', <EventCollaterals />) },
       { path: 'events/:id/props', element: evtSec('event.props', <EventProps />) },
+      { path: 'events/:id/decisions', element: evtProj(<EventDecisions />) },
       { path: 'events/:id/brief-deck', element: evtProj(<EventBriefDeck />) },
 
       // ── Magazine ────────────────────────────────────────────────────────
@@ -145,6 +150,7 @@ const router = createBrowserRouter([
       { path: 'shoots/:id/call-sheet', element: shtSec('shoot.callsheet', <ShootCallSheet />) },
       { path: 'shoots/:id/props', element: shtSec('shoot.props', <ShootProps />) },
       { path: 'shoots/:id/shot-brief', element: shtSec('shoot.brief', <ShootBrief />) },
+      { path: 'shoots/:id/decisions', element: shtProj(<ShootDecisions />) },
       { path: 'shoots/:id/brief-deck', element: shtProj(<ShootBriefDeck />) },
     ],
   },

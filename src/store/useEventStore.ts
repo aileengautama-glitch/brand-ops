@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { EventProject, TeamMember, BriefRosterEntry, ReferenceBlock, ReferenceImage, SketchBlock, CollateralItem, CollateralImage, Prop } from '@/types/event'
 import type {
-  Task, TimelineMilestone, DayOfSlot, BudgetItem,
+  Task, TimelineMilestone, Decision, DayOfSlot, BudgetItem,
   Vendor, MoodboardItem, Tag, ColourSwatch,
 } from '@/types/common'
 import { generateId, now } from '@/lib/utils'
@@ -47,6 +47,12 @@ interface EventStoreState {
   removeMilestone: (projectId: string, id: string) => void
   moveMilestone: (projectId: string, id: string, direction: 'up' | 'down') => void
   reorderMilestones: (projectId: string, orderedIds: string[]) => void
+
+  // ── Decisions (approval queue) ──────────────────────────────────────────────
+  addDecision: (projectId: string, data: Omit<Decision, 'id' | 'order' | 'createdAt'>) => void
+  updateDecision: (projectId: string, id: string, patch: Partial<Decision>) => void
+  removeDecision: (projectId: string, id: string) => void
+  setDecisions: (projectId: string, decisions: Decision[]) => void
 
   // ── Day-of schedule ─────────────────────────────────────────────────────────
   addDayOfSlot: (projectId: string, data: Omit<DayOfSlot, 'id' | 'order'>) => void
@@ -129,7 +135,7 @@ function createDefaultEventProject(name: string, description = ''): EventProject
     id: generateId(), name, description,
     createdAt: now(), updatedAt: now(),
     eventDate: '', venue: '', runTime: '',
-    tasks: [], milestones: [], dayOfSlots: [],
+    tasks: [], milestones: [], decisions: [], dayOfSlots: [],
     totalBudget: 0, budgetItems: [], vendors: [],
     teamMembers: [], moodboardItems: [], tags: [], colours: [],
     staffRoster: [], referenceBlocks: [], sketchBlocks: [], collaterals: [], props: [],
@@ -236,6 +242,19 @@ export const useEventStore = create<EventStoreState>()(
               return idx === -1 ? m : { ...m, order: idx * 1000 }
             }),
           })),
+
+        // ── Decisions ──────────────────────────────────────────────────────────
+        addDecision: (projectId, data) => {
+          const item: Decision = { ...data, id: generateId(), order: Date.now(), createdAt: now() }
+          patch(projectId, (p) => ({ decisions: [...(p.decisions ?? []), item] }))
+        },
+        updateDecision: (projectId, id, dp) =>
+          patch(projectId, (p) => ({
+            decisions: (p.decisions ?? []).map((d) => (d.id === id ? { ...d, ...dp } : d)),
+          })),
+        removeDecision: (projectId, id) =>
+          patch(projectId, (p) => ({ decisions: (p.decisions ?? []).filter((d) => d.id !== id) })),
+        setDecisions: (projectId, decisions) => patch(projectId, () => ({ decisions })),
 
         // ── Day-of slots ───────────────────────────────────────────────────────
         addDayOfSlot: (projectId, data) => {

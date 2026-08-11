@@ -50,6 +50,38 @@ export interface TimelineMilestone {
   owner?: string                // named owner — a gate should never be unowned
 }
 
+/**
+ * A decision that needs someone's sign-off — the alternative to "approval by
+ * message". Each carries its options, a stated recommendation, the cost impact
+ * and a needed-by date, so the approver can answer in one pass. Once decided it
+ * records who decided and when, making the list double as a decision log.
+ */
+export type DecisionStatus = 'open' | 'decided'
+
+export interface DecisionOption {
+  id: string
+  label: string
+  /** Cost impact of THIS option, free text (e.g. '+$450', 'no change'). */
+  costImpact: string
+}
+
+export interface Decision {
+  id: string
+  title: string             // the question being asked
+  category: string          // e.g. Budget, Crew, Location, Photographer, Model
+  options: DecisionOption[]
+  recommendation: string    // the stated recommendation (id of an option, or free text)
+  costImpact: string        // overall cost impact summary
+  neededBy: string          // ISO date — when the answer is required
+  status: DecisionStatus
+  decidedBy: string
+  decidedOn: string         // ISO date — stamped when status flips to 'decided'
+  outcome: string           // what was actually decided
+  notes: string
+  order: number
+  createdAt: string
+}
+
 export interface DayOfSlot {
   id: string
   timeStart: string     // e.g. '09:00'

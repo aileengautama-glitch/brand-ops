@@ -1,6 +1,7 @@
 import type {
   Task,
   TimelineMilestone,
+  Decision,
   DayOfSlot,
   BudgetItem,
   Vendor,
@@ -10,7 +11,7 @@ import type {
   Prop,
 } from './common'
 
-export type { Task, TimelineMilestone, DayOfSlot, BudgetItem, Vendor, MoodboardItem, Tag, ColourSwatch, Prop }
+export type { Task, TimelineMilestone, Decision, DayOfSlot, BudgetItem, Vendor, MoodboardItem, Tag, ColourSwatch, Prop }
 
 // ─── Reference blocks ────────────────────────────────────────────────────────
 
@@ -104,6 +105,7 @@ export interface EventProject {
   // Data collections
   tasks: Task[]
   milestones: TimelineMilestone[]
+  decisions?: Decision[]   // approval/decision queue; optional → legacy projects unaffected
   dayOfSlots: DayOfSlot[]
   totalBudget: number
   budgetItems: BudgetItem[]
