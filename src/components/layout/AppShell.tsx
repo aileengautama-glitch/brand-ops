@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom'
 import TopBar from './TopBar'
 import Sidebar from './Sidebar'
+import BackendStatusBanner from './BackendStatusBanner'
 import LoginGate from '@/components/auth/LoginGate'
 import RecoveryPrompt from '@/components/auth/RecoveryPrompt'
 import { useUserStore } from '@/store/useUserStore'
@@ -174,6 +175,8 @@ export default function AppShell() {
       {recovery && <RecoveryPrompt />}
 
       <TopBar />
+      {/* Backend not accepting writes — say so rather than looking fine */}
+      <BackendStatusBanner />
       <div className="app-shell-inner flex flex-1 overflow-hidden">
         <Sidebar />
         <main className="flex-1 overflow-y-auto bg-base">

@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, Calendar, ChevronRight, Trash2 } from 'lucide-react'
+import { Plus, Calendar, ChevronRight, Trash2, AlertTriangle, X, WifiOff } from 'lucide-react'
 import { useEventStore } from '@/store/useEventStore'
+import { useCreateProject } from '@/hooks/useCreateProject'
+import { useBackendStatus } from '@/store/useBackendStatus'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { formatDate } from '@/lib/utils'
 import PageHeader from '@/components/layout/PageHeader'
@@ -10,9 +12,10 @@ import type { EventProject } from '@/types/event'
 
 export default function EventsHome() {
   const projects    = useEventStore((s) => s.projects)
-  const addProject  = useEventStore((s) => s.addProject)
   const removeProject = useEventStore((s) => s.removeProject)
   const navigate    = useNavigate()
+  const { create, creating, error: createError, clearError } = useCreateProject('event')
+  const backendIssue = useBackendStatus((s) => s.issue)
 
   const { isLoggedIn, isAdmin, allowedModules, canView } = useCurrentUser()
 
@@ -28,11 +31,12 @@ export default function EventsHome() {
     return projects.filter((p) => canView('event', p.id))
   })()
 
-  const handleCreate = () => {
-    if (!name.trim()) return
-    const project = addProject(name.trim(), description.trim())
+  const handleCreate = async () => {
+    if (!name.trim() || creating) return
+    const id = await create(name.trim(), description.trim())
+    if (!id) return   // failed — error is shown, nothing was added
     setName(''); setDescription(''); setShowForm(false)
-    navigate(`/events/${project.id}/dashboard`)
+    navigate(`/events/${id}/dashboard`)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -82,10 +86,20 @@ export default function EventsHome() {
             <input type="text" placeholder="Short description (optional)" value={description}
               onChange={(e) => setDescription(e.target.value)} onKeyDown={handleKeyDown}
               className="w-full px-3 py-1.5 text-sm border border-surface-3 rounded bg-white focus:outline-none focus:border-accent placeholder:text-ink-faint" />
+            {createError && (
+              <div className="flex items-start gap-2 px-2.5 py-2 rounded border border-red-200 bg-red-50 text-xs text-red-700">
+                <AlertTriangle size={13} className="shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <p className="font-semibold">Project not created</p>
+                  <p className="opacity-90">{createError}</p>
+                </div>
+                <button onClick={clearError} className="ml-auto shrink-0 p-0.5 hover:opacity-70"><X size={12} /></button>
+              </div>
+            )}
             <div className="flex gap-2 pt-1">
-              <button onClick={handleCreate} disabled={!name.trim()}
+              <button onClick={handleCreate} disabled={!name.trim() || creating}
                 className="px-3 py-1.5 bg-accent text-white text-sm rounded disabled:opacity-40 hover:bg-accent-dark transition-colors">
-                Create project
+                {creating ? "Creating…" : "Create project"}
               </button>
               <button onClick={() => { setShowForm(false); setName(''); setDescription('') }}
                 className="px-3 py-1.5 text-sm text-ink-muted hover:text-ink border border-surface-3 rounded transition-colors">
@@ -110,11 +124,25 @@ export default function EventsHome() {
       )}
 
       {projects.length === 0 ? (
-        <div className="text-center py-14 text-ink-faint">
-          <Calendar size={28} className="mx-auto mb-3 opacity-30" />
-          <p className="text-sm font-medium text-ink-muted">No event projects yet.</p>
-          <p className="text-xs mt-1">Create your first project to get started.</p>
-        </div>
+        backendIssue !== 'none' ? (
+          <div className="text-center py-14 text-ink-faint">
+            <WifiOff size={28} className="mx-auto mb-3 opacity-40" />
+            <p className="text-sm font-medium text-ink-muted">Can't reach the backend</p>
+            <p className="text-xs mt-1">
+              This list may be incomplete — projects stored on the server can't be loaded right now.
+            </p>
+            <button onClick={() => window.location.reload()}
+              className="mt-3 px-3 py-1.5 text-xs border border-surface-3 rounded text-ink-secondary hover:bg-surface-1 transition-colors">
+              Retry
+            </button>
+          </div>
+        ) : (
+          <div className="text-center py-14 text-ink-faint">
+            <Calendar size={28} className="mx-auto mb-3 opacity-30" />
+            <p className="text-sm font-medium text-ink-muted">No event projects yet.</p>
+            <p className="text-xs mt-1">Create your first project to get started.</p>
+          </div>
+        )
       ) : visibleProjects.length === 0 ? (
         <div className="text-center py-10 text-ink-faint">
           <p className="text-sm text-ink-muted">No projects linked to your profile yet.</p>
