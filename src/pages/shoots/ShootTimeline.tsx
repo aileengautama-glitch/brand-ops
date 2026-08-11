@@ -7,6 +7,7 @@ import ProjectHeader from '@/components/layout/ProjectHeader'
 import PageSection from '@/components/layout/PageSection'
 import MilestoneList from '@/components/timeline/MilestoneList'
 import ProjectAnchorDates from '@/components/timeline/ProjectAnchorDates'
+import ChecklistGates from '@/components/checklist/ChecklistGates'
 import DayOfSchedule from '@/components/timeline/DayOfSchedule'
 import ShootScheduleExport from '@/components/timeline/ShootScheduleExport'
 import { usePrint } from '@/hooks/usePrint'
@@ -67,6 +68,16 @@ export default function ShootTimeline() {
             anchors={{ shoot: project.shootDateISO, launch: project.launchDate }}
           />
         </PageSection>
+
+        {(project.checklistItems ?? []).some((i) => i.isGate) && (
+          <PageSection label="Checklist Gates" card>
+            <ChecklistGates
+              items={project.checklistItems ?? []}
+              anchors={{ shoot: project.shootDateISO, launch: project.launchDate }}
+              checklistHref={`/shoots/${id}/checklist`}
+            />
+          </PageSection>
+        )}
 
         <PageSection label="Detailed Day-Of Schedule" card>
           <DayOfSchedule

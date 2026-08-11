@@ -5,6 +5,8 @@ import type {
   Task, TimelineMilestone, Decision, DayOfSlot, BudgetItem,
   Vendor, MoodboardItem, Tag, ColourSwatch,
 } from '@/types/common'
+import type { ChecklistItem } from '@/types/checklist'
+import { templateByKey, instantiateTemplate } from '@/lib/checklistTemplates'
 import { generateId, now } from '@/lib/utils'
 import { createSeedEventProjects } from '@/lib/seedData'
 import { useUserStore } from './useUserStore'
@@ -47,6 +49,12 @@ interface EventStoreState {
   removeMilestone: (projectId: string, id: string) => void
   moveMilestone: (projectId: string, id: string, direction: 'up' | 'down') => void
   reorderMilestones: (projectId: string, orderedIds: string[]) => void
+
+  // ── Checklist (template-derived) ────────────────────────────────────────────
+  addChecklistItem: (projectId: string, data: Omit<ChecklistItem, 'id' | 'order'>) => void
+  updateChecklistItem: (projectId: string, id: string, patch: Partial<ChecklistItem>) => void
+  removeChecklistItem: (projectId: string, id: string) => void
+  setChecklistItems: (projectId: string, checklistItems: ChecklistItem[]) => void
 
   // ── Decisions (approval queue) ──────────────────────────────────────────────
   addDecision: (projectId: string, data: Omit<Decision, 'id' | 'order' | 'createdAt'>) => void
@@ -135,6 +143,12 @@ function createDefaultEventProject(name: string, description = ''): EventProject
     id: generateId(), name, description,
     createdAt: now(), updatedAt: now(),
     eventDate: '', venue: '', runTime: '',
+    // New events start from the event checklist (purpose, venue and invite lead
+    // times are the things that get missed).
+    checklistItems: (() => {
+      const t = templateByKey('event')
+      return t ? instantiateTemplate(t, [], generateId) : []
+    })(),
     tasks: [], milestones: [], decisions: [], dayOfSlots: [],
     totalBudget: 0, budgetItems: [], vendors: [],
     teamMembers: [], moodboardItems: [], tags: [], colours: [],
@@ -242,6 +256,19 @@ export const useEventStore = create<EventStoreState>()(
               return idx === -1 ? m : { ...m, order: idx * 1000 }
             }),
           })),
+
+        // ── Checklist ──────────────────────────────────────────────────────────
+        addChecklistItem: (projectId, data) => {
+          const item: ChecklistItem = { ...data, id: generateId(), order: Date.now() }
+          patch(projectId, (p) => ({ checklistItems: [...(p.checklistItems ?? []), item] }))
+        },
+        updateChecklistItem: (projectId, id, cp) =>
+          patch(projectId, (p) => ({
+            checklistItems: (p.checklistItems ?? []).map((c) => (c.id === id ? { ...c, ...cp } : c)),
+          })),
+        removeChecklistItem: (projectId, id) =>
+          patch(projectId, (p) => ({ checklistItems: (p.checklistItems ?? []).filter((c) => c.id !== id) })),
+        setChecklistItems: (projectId, checklistItems) => patch(projectId, () => ({ checklistItems })),
 
         // ── Decisions ──────────────────────────────────────────────────────────
         addDecision: (projectId, data) => {

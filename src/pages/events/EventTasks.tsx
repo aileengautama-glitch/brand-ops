@@ -5,6 +5,8 @@ import { useCurrentUser } from '@/hooks/useCurrentUser'
 import ProjectHeader from '@/components/layout/ProjectHeader'
 import PageSection from '@/components/layout/PageSection'
 import TaskList from '@/components/tasks/TaskList'
+import ChecklistPanel from '@/components/checklist/ChecklistPanel'
+import { templatesForModule } from '@/lib/checklistTemplates'
 
 export default function EventTasks() {
   const { id } = useParams<{ id: string }>()
@@ -13,6 +15,10 @@ export default function EventTasks() {
   const addTask = useEventStore((s) => s.addTask)
   const updateTask = useEventStore((s) => s.updateTask)
   const removeTask = useEventStore((s) => s.removeTask)
+  const addChecklistItem = useEventStore((s) => s.addChecklistItem)
+  const updateChecklistItem = useEventStore((s) => s.updateChecklistItem)
+  const removeChecklistItem = useEventStore((s) => s.removeChecklistItem)
+  const setChecklistItems = useEventStore((s) => s.setChecklistItems)
 
   const { canEdit, getMemberId } = useCurrentUser()
 
@@ -31,6 +37,20 @@ export default function EventTasks() {
         onUpdateName={(name) => updateProject(id, { name })}
         onUpdateDescription={(description) => updateProject(id, { description })}
       />
+
+      <PageSection label="Pre-Production Checklist">
+        <ChecklistPanel
+          items={project.checklistItems ?? []}
+          templates={templatesForModule('event')}
+          anchors={{ event: project.eventDate, launch: project.launchDate }}
+          module="event"
+          readOnly={readOnly}
+          onAdd={(data) => addChecklistItem(id, data)}
+          onUpdate={(cid, patch) => updateChecklistItem(id, cid, patch)}
+          onRemove={(cid) => removeChecklistItem(id, cid)}
+          onReplaceAll={(items) => setChecklistItems(id, items)}
+        />
+      </PageSection>
 
       <PageSection
         label={`Tasks & Checklist — ${done} / ${total} done`}

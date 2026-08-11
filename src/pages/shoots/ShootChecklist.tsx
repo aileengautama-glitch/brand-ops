@@ -5,6 +5,8 @@ import { useCurrentUser } from '@/hooks/useCurrentUser'
 import ProjectHeader from '@/components/layout/ProjectHeader'
 import PageSection from '@/components/layout/PageSection'
 import TaskList from '@/components/tasks/TaskList'
+import ChecklistPanel from '@/components/checklist/ChecklistPanel'
+import { templatesForModule } from '@/lib/checklistTemplates'
 
 export default function ShootChecklist() {
   const { id } = useParams<{ id: string }>()
@@ -13,6 +15,10 @@ export default function ShootChecklist() {
   const addTask = useShootStore((s) => s.addTask)
   const updateTask = useShootStore((s) => s.updateTask)
   const removeTask = useShootStore((s) => s.removeTask)
+  const addChecklistItem = useShootStore((s) => s.addChecklistItem)
+  const updateChecklistItem = useShootStore((s) => s.updateChecklistItem)
+  const removeChecklistItem = useShootStore((s) => s.removeChecklistItem)
+  const setChecklistItems = useShootStore((s) => s.setChecklistItems)
 
   const { canEdit, getMemberId } = useCurrentUser()
 
@@ -33,7 +39,21 @@ export default function ShootChecklist() {
         onUpdateDescription={(description) => updateProject(id, { description })}
       />
 
-      <PageSection label={`Pre-Production Checklist — ${done} / ${total} done`}>
+      <PageSection label="Pre-Production Checklist">
+        <ChecklistPanel
+          items={project.checklistItems ?? []}
+          templates={templatesForModule('shoot')}
+          anchors={{ shoot: project.shootDateISO, launch: project.launchDate }}
+          module="shoot"
+          readOnly={readOnly}
+          onAdd={(data) => addChecklistItem(id, data)}
+          onUpdate={(cid, patch) => updateChecklistItem(id, cid, patch)}
+          onRemove={(cid) => removeChecklistItem(id, cid)}
+          onReplaceAll={(items) => setChecklistItems(id, items)}
+        />
+      </PageSection>
+
+      <PageSection label={`Tasks — ${done} / ${total} done`}>
         <TaskList
           tasks={project.tasks}
           members={members}

@@ -10,6 +10,8 @@ import type {
   Task, TimelineMilestone, Decision, DayOfSlot, BudgetItem,
   Vendor, MoodboardItem, Tag, ColourSwatch,
 } from '@/types/common'
+import type { ChecklistItem } from '@/types/checklist'
+import { templateByKey, instantiateTemplate } from '@/lib/checklistTemplates'
 import { generateId, now } from '@/lib/utils'
 import { createSeedShootProjects } from '@/lib/seedData'
 import { useUserStore } from './useUserStore'
@@ -67,6 +69,12 @@ interface ShootStoreState {
   setLogisticsItems: (projectId: string, logisticsItems: LogisticsItem[]) => void
   /** Seed the default who-brings-what rows once, when none exist yet. */
   seedLogisticsDefaults: (projectId: string) => void
+
+  // ── Checklist (template-derived) ────────────────────────────────────────────
+  addChecklistItem: (projectId: string, data: Omit<ChecklistItem, 'id' | 'order'>) => void
+  updateChecklistItem: (projectId: string, id: string, patch: Partial<ChecklistItem>) => void
+  removeChecklistItem: (projectId: string, id: string) => void
+  setChecklistItems: (projectId: string, checklistItems: ChecklistItem[]) => void
 
   // ── Decisions (approval queue) ──────────────────────────────────────────────
   addDecision: (projectId: string, data: Omit<Decision, 'id' | 'order' | 'createdAt'>) => void
@@ -208,6 +216,12 @@ function createDefaultShootProject(name: string, description = ''): ShootProject
     logisticsItems: DEFAULT_LOGISTICS_ITEMS.map((item, i) => ({
       id: generateId(), item, who: '', vehicle: '', time: '', notes: '', order: i * 1000,
     })),
+    // New shoots start from the production-library checklist (campaign, stylist on
+    // set). Re-apply with different conditions from the checklist page.
+    checklistItems: (() => {
+      const t = templateByKey('shoot')
+      return t ? instantiateTemplate(t, ['with-stylist', 'campaign'], generateId) : []
+    })(),
     tasks: [], milestones: [], decisions: [], dayOfSlots: [],
     totalBudget: 0, budgetItems: [], vendors: [],
     crewMembers: [], models: [], shots: [], ddayRows: [],
@@ -343,6 +357,19 @@ export const useShootStore = create<ShootStoreState>()(
               })),
             }
           }),
+
+        // ── Checklist ──────────────────────────────────────────────────────────
+        addChecklistItem: (projectId, data) => {
+          const item: ChecklistItem = { ...data, id: generateId(), order: Date.now() }
+          patch(projectId, (p) => ({ checklistItems: [...(p.checklistItems ?? []), item] }))
+        },
+        updateChecklistItem: (projectId, id, cp) =>
+          patch(projectId, (p) => ({
+            checklistItems: (p.checklistItems ?? []).map((c) => (c.id === id ? { ...c, ...cp } : c)),
+          })),
+        removeChecklistItem: (projectId, id) =>
+          patch(projectId, (p) => ({ checklistItems: (p.checklistItems ?? []).filter((c) => c.id !== id) })),
+        setChecklistItems: (projectId, checklistItems) => patch(projectId, () => ({ checklistItems })),
 
         // ── Decisions ──────────────────────────────────────────────────────────
         addDecision: (projectId, data) => {

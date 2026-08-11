@@ -6,6 +6,7 @@ import ProjectHeader from '@/components/layout/ProjectHeader'
 import PageSection from '@/components/layout/PageSection'
 import MilestoneList from '@/components/timeline/MilestoneList'
 import ProjectAnchorDates from '@/components/timeline/ProjectAnchorDates'
+import ChecklistGates from '@/components/checklist/ChecklistGates'
 import DayOfSchedule from '@/components/timeline/DayOfSchedule'
 
 export default function EventTimeline() {
@@ -60,6 +61,16 @@ export default function EventTimeline() {
           anchors={{ event: project.eventDate, launch: project.launchDate }}
         />
       </PageSection>
+
+      {(project.checklistItems ?? []).some((i) => i.isGate) && (
+        <PageSection label="Checklist Gates" card>
+          <ChecklistGates
+            items={project.checklistItems ?? []}
+            anchors={{ event: project.eventDate, launch: project.launchDate }}
+            checklistHref={`/events/${id}/tasks`}
+          />
+        </PageSection>
+      )}
 
       <PageSection label="Day-Of Schedule" card>
         <DayOfSchedule

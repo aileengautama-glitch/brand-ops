@@ -16,6 +16,7 @@
 import type { ShootProject, Shot, DDayTimelineRow, LogisticsItem } from '@/types/shoot'
 import type { EventProject } from '@/types/event'
 import type { TimelineMilestone, Decision, DayOfSlot } from '@/types/common'
+import type { ChecklistItem } from '@/types/checklist'
 import { useShootStore } from '@/store/useShootStore'
 import { useEventStore } from '@/store/useEventStore'
 
@@ -66,6 +67,11 @@ export const SHOOT_SECTIONS: ShootSectionDescriptor[] = [
     apply:   (projectId, items) => useShootStore.getState().setDecisions(projectId, items as Decision[]),
   },
   {
+    section: 'shoot_checklist_items',
+    build:   (p) => ({ items: p.checklistItems ?? [] }),
+    apply:   (projectId, items) => useShootStore.getState().setChecklistItems(projectId, items as ChecklistItem[]),
+  },
+  {
     section: 'shoot_logistics',
     build:   (p) => ({ items: p.logisticsItems ?? [] }),
     apply:   (projectId, items) => useShootStore.getState().setLogisticsItems(projectId, items as LogisticsItem[]),
@@ -81,6 +87,11 @@ export const EVENT_SECTIONS: EventSectionDescriptor[] = [
     section: 'event_schedule',
     build:   (p) => ({ items: p.dayOfSlots }),
     apply:   (projectId, items) => useEventStore.getState().setDayOfSlots(projectId, items as DayOfSlot[]),
+  },
+  {
+    section: 'event_checklist_items',
+    build:   (p) => ({ items: p.checklistItems ?? [] }),
+    apply:   (projectId, items) => useEventStore.getState().setChecklistItems(projectId, items as ChecklistItem[]),
   },
   {
     section: 'event_decisions',

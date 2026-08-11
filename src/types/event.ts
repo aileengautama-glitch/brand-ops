@@ -10,7 +10,9 @@ import type {
   ColourSwatch,
   Prop,
 } from './common'
+import type { ChecklistItem } from './checklist'
 
+export type { ChecklistItem }
 export type { Task, TimelineMilestone, Decision, DayOfSlot, BudgetItem, Vendor, MoodboardItem, Tag, ColourSwatch, Prop }
 
 // ─── Reference blocks ────────────────────────────────────────────────────────
@@ -106,6 +108,7 @@ export interface EventProject {
   tasks: Task[]
   milestones: TimelineMilestone[]
   decisions?: Decision[]   // approval/decision queue; optional → legacy projects unaffected
+  checklistItems?: ChecklistItem[]  // template-derived pre-production checklist; optional
   dayOfSlots: DayOfSlot[]
   totalBudget: number
   budgetItems: BudgetItem[]
