@@ -21,6 +21,7 @@ import {
   Mail,
   FileCheck,
   CircleDot,
+  Share2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEventStore } from '@/store/useEventStore'
@@ -50,6 +51,8 @@ const eventNavItems: NavItem[] = [
   { label: 'Collaterals', path: 'collaterals', icon: Layers, sectionKey: 'event.collaterals' },
   { label: 'Props', path: 'props', icon: Box, sectionKey: 'event.props' },
   { label: 'Approvals', path: 'approvals', icon: CircleDot },
+  // Overview & Share is shoots-only for now — the scoped project view is built
+  // against the shoot data model. Events keep the brief deck.
   { label: 'Brief Deck', path: 'brief-deck', icon: FileText },
 ]
 
@@ -82,6 +85,7 @@ const shootNavItems: NavItem[] = [
   { label: 'Shot Brief', path: 'shot-brief', icon: Camera, sectionKey: 'shoot.brief' },
   { label: 'Call Sheet', path: 'call-sheet', icon: ClipboardList, sectionKey: 'shoot.callsheet' },
   { label: 'Approvals', path: 'approvals', icon: CircleDot },
+  { label: 'Overview & Share', path: 'overview', icon: Share2 },
   { label: 'Brief Deck', path: 'brief-deck', icon: FileText },
 ]
 

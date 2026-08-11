@@ -47,6 +47,14 @@ export type ShootDeckData = Pick<
   | 'stylings'
   | 'crewMembers'
   | 'models'
+  // Added for the scoped project share view — these ride the same snapshot so an
+  // external link renders on a device that has never opened the project.
+  | 'callSheet'
+  | 'logisticsItems'
+  | 'totalBudget'
+  | 'budgetItems'
+  | 'decisions'
+  | 'checklistItems'
 >
 
 // ─── Builders (project → deck view-model) ─────────────────────────────────────
@@ -82,5 +90,11 @@ export function buildShootDeckData(p: ShootProject): ShootDeckData {
     stylings:            p.stylings ?? [],
     crewMembers:         p.crewMembers,
     models:              p.models,
+    callSheet:           p.callSheet,
+    logisticsItems:      p.logisticsItems ?? [],
+    totalBudget:         p.totalBudget,
+    budgetItems:         p.budgetItems,
+    decisions:           p.decisions ?? [],
+    checklistItems:      p.checklistItems ?? [],
   }
 }

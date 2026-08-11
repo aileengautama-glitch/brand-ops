@@ -7,6 +7,7 @@ import { RequireProjectAccess, RequireSectionAccess } from '@/components/auth/Re
 import type { SectionKey } from '@/auth/permissions'
 import EventBriefDeckShare from '@/pages/share/EventBriefDeckShare'
 import ShootBriefDeckShare from '@/pages/share/ShootBriefDeckShare'
+import ShootProjectShare from '@/pages/share/ShootProjectShare'
 
 // Home
 import Home from '@/pages/Home'
@@ -63,6 +64,7 @@ import ShootBriefDeck from '@/pages/shoots/ShootBriefDeck'
 import ShootProductsStyling from '@/pages/shoots/ShootProductsStyling'
 import ShootCallSheet from '@/pages/shoots/ShootCallSheet'
 import ShootProps from '@/pages/shoots/ShootProps'
+import ShootOverview from '@/pages/shoots/ShootOverview'
 
 // ── Access-guard helpers (keep route definitions terse) ──────────────────────
 const magProj = (el: ReactElement) =>
@@ -87,6 +89,7 @@ const router = createBrowserRouter([
     children: [
       { path: 'event/:id/brief-deck',  element: <EventBriefDeckShare /> },
       { path: 'shoot/:id/brief-deck',  element: <ShootBriefDeckShare /> },
+      { path: 'shoot/:id/project',     element: <ShootProjectShare /> },
     ],
   },
   {
@@ -152,6 +155,7 @@ const router = createBrowserRouter([
       { path: 'shoots/:id/call-sheet', element: shtSec('shoot.callsheet', <ShootCallSheet />) },
       { path: 'shoots/:id/props', element: shtSec('shoot.props', <ShootProps />) },
       { path: 'shoots/:id/shot-brief', element: shtSec('shoot.brief', <ShootBrief />) },
+      { path: 'shoots/:id/overview', element: shtProj(<ShootOverview />) },
       { path: 'shoots/:id/approvals', element: shtProj(<ShootDecisions />) },
       { path: 'shoots/:id/decisions', element: <Navigate to="../approvals" replace /> },
       { path: 'shoots/:id/brief-deck', element: shtProj(<ShootBriefDeck />) },
