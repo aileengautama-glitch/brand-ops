@@ -1,10 +1,11 @@
 import { useState, useRef } from 'react'
 import { Plus, CalendarDays } from 'lucide-react'
-import type { TimelineMilestone } from '@/types/common'
+import type { MilestoneAnchor, TimelineMilestone } from '@/types/common'
 import MilestoneItem from './MilestoneItem'
 import EmptyState from '@/components/ui/EmptyState'
 import { inputCls } from '@/components/ui/FormField'
 import { cn } from '@/lib/utils'
+import { ANCHOR_LABELS, anchorOptions, compareByResolvedDate, type ProjectAnchors } from '@/lib/scheduleEngine'
 
 interface MilestoneListProps {
   milestones: TimelineMilestone[]
@@ -15,9 +16,15 @@ interface MilestoneListProps {
   onReorder?: (orderedIds: string[]) => void
   /** When true, hides add/remove/reorder controls and makes fields read-only. */
   readOnly?: boolean
+  /** Project anchor dates — enable anchor+offset scheduling when supplied. */
+  anchors?: ProjectAnchors
+  module?: 'shoot' | 'event'
 }
 
-const BLANK = { title: '', date: '', description: '', notes: '', relatedTaskIds: [] }
+const BLANK = {
+  title: '', date: '', description: '', notes: '', relatedTaskIds: [] as string[],
+  anchorType: 'none' as MilestoneAnchor, offsetDays: 0, owner: '',
+}
 
 export default function MilestoneList({
   milestones,
@@ -27,6 +34,8 @@ export default function MilestoneList({
   onMove,
   onReorder,
   readOnly,
+  anchors,
+  module = 'shoot',
 }: MilestoneListProps) {
   const [showForm, setShowForm] = useState(false)
   const [draft, setDraft] = useState(BLANK)
@@ -34,7 +43,11 @@ export default function MilestoneList({
   const [overIndex, setOverIndex] = useState<number | null>(null)
   const dragNode = useRef<HTMLDivElement | null>(null)
 
-  const sorted = [...milestones].sort((a, b) => a.order - b.order)
+  // With anchors in play, gates read chronologically (a timeline, not a list);
+  // without them, manual order is preserved exactly as before.
+  const sorted = anchors
+    ? [...milestones].sort(compareByResolvedDate(anchors))
+    : [...milestones].sort((a, b) => a.order - b.order)
 
   const handleAdd = () => {
     if (!draft.title.trim()) return
@@ -123,6 +136,8 @@ export default function MilestoneList({
                 onMove={(dir) => onMove(m.id, dir)}
                 isDraggable={!!onReorder && !readOnly}
                 readOnly={readOnly}
+                anchors={anchors}
+                module={module}
               />
             </div>
           ))}
@@ -144,11 +159,42 @@ export default function MilestoneList({
               className={inputCls}
             />
             <input
-              type="date"
-              value={draft.date}
-              onChange={(e) => setDraft((d) => ({ ...d, date: e.target.value }))}
+              type="text"
+              placeholder="Owner"
+              value={draft.owner}
+              onChange={(e) => setDraft((d) => ({ ...d, owner: e.target.value }))}
               className={inputCls}
             />
+          </div>
+
+          {/* Schedule the gate off an anchor, or give it a manual date */}
+          <div className="grid grid-cols-2 gap-2">
+            <select
+              value={draft.anchorType}
+              onChange={(e) => setDraft((d) => ({ ...d, anchorType: e.target.value as MilestoneAnchor }))}
+              className={inputCls}
+            >
+              {anchorOptions(module).map((a) => (
+                <option key={a} value={a}>{ANCHOR_LABELS[a]}</option>
+              ))}
+            </select>
+            {draft.anchorType === 'none' ? (
+              <input
+                type="date"
+                value={draft.date}
+                onChange={(e) => setDraft((d) => ({ ...d, date: e.target.value }))}
+                className={inputCls}
+              />
+            ) : (
+              <input
+                type="number"
+                min={0}
+                placeholder="Days before"
+                value={draft.offsetDays || ''}
+                onChange={(e) => setDraft((d) => ({ ...d, offsetDays: Math.max(0, Number(e.target.value) || 0) }))}
+                className={inputCls}
+              />
+            )}
           </div>
           <input
             type="text"

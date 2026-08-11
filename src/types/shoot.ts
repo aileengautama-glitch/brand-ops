@@ -130,6 +130,12 @@ export interface ShootProject {
   createdAt: string
   updatedAt: string
 
+  // ── Scheduling anchors (ISO dates; optional on legacy projects) ──
+  // Distinct from briefDetails.shootDate, which is free text for the deck cover.
+  // These drive the milestone scheduling engine — see lib/scheduleEngine.ts.
+  shootDateISO?: string   // anchor 'shoot' — pre-production counts back from this
+  launchDate?: string     // anchor 'launch' — post-production / offline work counts back from this
+
   // Brief details (dashboard editable block)
   briefDetails: ShootBriefDetails
 

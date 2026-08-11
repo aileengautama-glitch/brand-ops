@@ -96,7 +96,8 @@ export interface EventProject {
   updatedAt: string
 
   // Project metadata
-  eventDate: string     // ISO date string
+  eventDate: string     // ISO date string — scheduling anchor ('event')
+  launchDate?: string   // ISO date string — scheduling anchor ('launch'); optional on legacy projects
   venue: string
   runTime: string       // e.g. '18:30 — 22:00'
 

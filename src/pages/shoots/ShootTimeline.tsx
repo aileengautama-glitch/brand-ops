@@ -6,6 +6,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser'
 import ProjectHeader from '@/components/layout/ProjectHeader'
 import PageSection from '@/components/layout/PageSection'
 import MilestoneList from '@/components/timeline/MilestoneList'
+import ProjectAnchorDates from '@/components/timeline/ProjectAnchorDates'
 import DayOfSchedule from '@/components/timeline/DayOfSchedule'
 import ShootScheduleExport from '@/components/timeline/ShootScheduleExport'
 import { usePrint } from '@/hooks/usePrint'
@@ -43,6 +44,17 @@ export default function ShootTimeline() {
         />
 
         <PageSection label="Pre-Production Milestones" card>
+          <div className="mb-3">
+            <ProjectAnchorDates
+              module="shoot"
+              primaryDate={project.shootDateISO ?? ''}
+              launchDate={project.launchDate ?? ''}
+              onChangePrimary={(v) => updateProject(id, { shootDateISO: v })}
+              onChangeLaunch={(v) => updateProject(id, { launchDate: v })}
+              readOnly={readOnly}
+              gateCount={project.milestones.filter((m) => (m.anchorType ?? 'none') !== 'none').length}
+            />
+          </div>
           <MilestoneList
             milestones={project.milestones}
             onAdd={(data) => addMilestone(id, data)}
@@ -51,6 +63,8 @@ export default function ShootTimeline() {
             onMove={(mid, dir) => moveMilestone(id, mid, dir)}
             onReorder={(ids) => reorderMilestones(id, ids)}
             readOnly={readOnly}
+            module="shoot"
+            anchors={{ shoot: project.shootDateISO, launch: project.launchDate }}
           />
         </PageSection>
 

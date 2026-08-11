@@ -18,7 +18,7 @@ interface EventStoreState {
   addProject: (name: string, description?: string) => EventProject
   updateProject: (
     projectId: string,
-    patch: Partial<Pick<EventProject, 'name' | 'description' | 'eventDate' | 'venue' | 'runTime'>>
+    patch: Partial<Pick<EventProject, 'name' | 'description' | 'eventDate' | 'launchDate' | 'venue' | 'runTime'>>
   ) => void
   removeProject: (projectId: string) => void
   clearAll: () => void

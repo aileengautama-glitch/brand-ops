@@ -1,9 +1,13 @@
 import { useRef, useState } from 'react'
-import { ChevronDown, ArrowUp, ArrowDown, Trash2, CalendarDays } from 'lucide-react'
+import { ChevronDown, ArrowUp, ArrowDown, Trash2, CalendarDays, Link2, AlertTriangle, UserRound } from 'lucide-react'
 import { cn, formatDate } from '@/lib/utils'
-import type { TimelineMilestone } from '@/types/common'
+import type { MilestoneAnchor, TimelineMilestone } from '@/types/common'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { inputCls } from '@/components/ui/FormField'
+import {
+  ANCHOR_LABELS, anchorOptions, resolveMilestone, milestoneUrgency, leadTimeWarning,
+  type ProjectAnchors,
+} from '@/lib/scheduleEngine'
 
 function InlineDateField({
   value,
@@ -61,6 +65,9 @@ interface MilestoneItemProps {
   onMove: (direction: 'up' | 'down') => void
   isDraggable?: boolean
   readOnly?: boolean
+  /** Project anchor dates — enable anchor+offset scheduling when supplied. */
+  anchors?: ProjectAnchors
+  module?: 'shoot' | 'event'
 }
 
 export default function MilestoneItem({
@@ -72,11 +79,18 @@ export default function MilestoneItem({
   onMove,
   isDraggable = false,
   readOnly,
+  anchors,
+  module = 'shoot',
 }: MilestoneItemProps) {
   const [expanded, setExpanded] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
-  const isPast = milestone.date ? new Date(milestone.date) < new Date() : false
+  // Effective deadline: computed from anchor+offset when set, else the manual date.
+  const resolved = resolveMilestone(milestone, anchors ?? {})
+  const effectiveDate = resolved.date
+  const urgency = milestoneUrgency(effectiveDate)
+  const leadWarn = leadTimeWarning(milestone.title, effectiveDate)
+  const isPast = urgency === 'overdue'
 
   return (
     <>
@@ -97,13 +111,42 @@ export default function MilestoneItem({
           {/* Title */}
           <span className="flex-1 text-sm text-ink min-w-0 truncate">{milestone.title}</span>
 
-          {/* Date */}
-          {milestone.date && (
-            <span className="flex items-center gap-1 text-xs text-ink-faint shrink-0">
-              <CalendarDays size={11} />
-              {formatDate(milestone.date)}
+          {/* Owner — a gate should never be unowned */}
+          {milestone.owner && (
+            <span className="flex items-center gap-1 text-2xs text-ink-muted shrink-0" title={`Owner: ${milestone.owner}`}>
+              <UserRound size={10} />{milestone.owner}
             </span>
           )}
+
+          {/* Lead-time breach — can this still physically be produced? */}
+          {leadWarn && (
+            <span
+              className="flex items-center gap-1 text-2xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 shrink-0"
+              title={`${leadWarn.label} needs ~${leadWarn.requiredDays} days; only ${leadWarn.actualDays} remain.`}
+            >
+              <AlertTriangle size={10} /> Lead time
+            </span>
+          )}
+
+          {/* Deadline — computed from the anchor, or manual */}
+          {effectiveDate ? (
+            <span
+              className={cn(
+                'flex items-center gap-1 text-xs shrink-0',
+                urgency === 'overdue' ? 'text-red-500 font-medium'
+                  : urgency === 'due-soon' ? 'text-amber-600'
+                  : 'text-ink-faint'
+              )}
+              title={resolved.computed ? `${ANCHOR_LABELS[resolved.anchorType]} − ${resolved.offsetDays}d` : 'Manual date'}
+            >
+              {resolved.computed ? <Link2 size={11} /> : <CalendarDays size={11} />}
+              {formatDate(effectiveDate)}
+            </span>
+          ) : resolved.missingAnchor ? (
+            <span className="text-2xs text-amber-600 shrink-0" title="This gate has an anchor but the project date isn't set yet">
+              Set {resolved.anchorType} date
+            </span>
+          ) : null}
 
           {/* Reorder */}
           {!readOnly && (
@@ -147,16 +190,78 @@ export default function MilestoneItem({
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-2xs uppercase tracking-wide text-ink-faint block">Date</label>
-                <div className="py-1">
-                  <InlineDateField
-                    value={milestone.date}
-                    onChange={(v) => onUpdate({ date: v })}
-                    readOnly={readOnly}
-                  />
-                </div>
+                <label className="text-2xs uppercase tracking-wide text-ink-faint block">Owner</label>
+                <input
+                  type="text"
+                  value={milestone.owner ?? ''}
+                  onChange={(e) => onUpdate({ owner: e.target.value })}
+                  readOnly={readOnly}
+                  placeholder="Who owns this gate?"
+                  className={inputCls}
+                />
               </div>
             </div>
+
+            {/* ── Scheduling: anchor + offset (deadline is derived, not typed) ── */}
+            <div className="grid grid-cols-3 gap-2.5 items-end">
+              <div className="space-y-1">
+                <label className="text-2xs uppercase tracking-wide text-ink-faint block">Counts back from</label>
+                <select
+                  value={resolved.anchorType}
+                  onChange={(e) => onUpdate({ anchorType: e.target.value as MilestoneAnchor })}
+                  disabled={readOnly}
+                  className={inputCls}
+                >
+                  {anchorOptions(module).map((a) => (
+                    <option key={a} value={a}>{ANCHOR_LABELS[a]}</option>
+                  ))}
+                </select>
+              </div>
+
+              {resolved.anchorType === 'none' ? (
+                <div className="space-y-1">
+                  <label className="text-2xs uppercase tracking-wide text-ink-faint block">Date</label>
+                  <div className="py-1">
+                    <InlineDateField
+                      value={milestone.date}
+                      onChange={(v) => onUpdate({ date: v })}
+                      readOnly={readOnly}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <label className="text-2xs uppercase tracking-wide text-ink-faint block">Days before</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={resolved.offsetDays}
+                    onChange={(e) => onUpdate({ offsetDays: Math.max(0, Number(e.target.value) || 0) })}
+                    readOnly={readOnly}
+                    className={inputCls}
+                  />
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <label className="text-2xs uppercase tracking-wide text-ink-faint block">Deadline</label>
+                <p className={cn('text-xs py-1.5', urgency === 'overdue' ? 'text-red-500 font-medium' : 'text-ink')}>
+                  {effectiveDate
+                    ? <>{formatDate(effectiveDate)}{resolved.computed && <span className="text-ink-faint"> · auto</span>}</>
+                    : <span className="text-ink-faint italic">{resolved.missingAnchor ? `Set the ${resolved.anchorType} date` : 'No date'}</span>}
+                </p>
+              </div>
+            </div>
+
+            {leadWarn && (
+              <p className="flex items-start gap-1.5 text-2xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
+                <AlertTriangle size={11} className="shrink-0 mt-px" />
+                <span>
+                  <strong>{leadWarn.label}</strong> typically needs ~{leadWarn.requiredDays} days,
+                  but only {leadWarn.actualDays} remain. This may no longer be producible in time.
+                </span>
+              </p>
+            )}
 
             <div className="space-y-1">
               <label className="text-2xs uppercase tracking-wide text-ink-faint block">Description</label>

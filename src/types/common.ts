@@ -27,14 +27,27 @@ export interface Task {
   updatedAt: string
 }
 
+/**
+ * What a milestone's deadline counts back from.
+ *   'none'   → manually typed date (legacy behaviour; `date` is authoritative)
+ *   'shoot'  → shoot date · 'launch' → launch date · 'event' → event/install date
+ * Pre-production counts back from the shoot/event date; post-production and
+ * offline work count back from the launch date.
+ */
+export type MilestoneAnchor = 'none' | 'shoot' | 'launch' | 'event'
+
 export interface TimelineMilestone {
   id: string
   title: string
-  date: string          // ISO date string
+  date: string          // ISO date string — manual date, or the fallback when no anchor is set
   description: string
   notes: string
   relatedTaskIds: string[]
   order: number
+  // ── Scheduling engine (optional → legacy rows keep working unchanged) ──
+  anchorType?: MilestoneAnchor  // undefined = 'none'
+  offsetDays?: number           // days BEFORE the anchor (28 = "28 days before")
+  owner?: string                // named owner — a gate should never be unowned
 }
 
 export interface DayOfSlot {

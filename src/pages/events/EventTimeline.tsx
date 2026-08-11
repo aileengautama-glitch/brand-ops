@@ -5,6 +5,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser'
 import ProjectHeader from '@/components/layout/ProjectHeader'
 import PageSection from '@/components/layout/PageSection'
 import MilestoneList from '@/components/timeline/MilestoneList'
+import ProjectAnchorDates from '@/components/timeline/ProjectAnchorDates'
 import DayOfSchedule from '@/components/timeline/DayOfSchedule'
 
 export default function EventTimeline() {
@@ -36,6 +37,17 @@ export default function EventTimeline() {
       />
 
       <PageSection label="Pre-Production Milestones" card>
+        <div className="mb-3">
+          <ProjectAnchorDates
+            module="event"
+            primaryDate={project.eventDate ?? ''}
+            launchDate={project.launchDate ?? ''}
+            onChangePrimary={(v) => updateProject(id, { eventDate: v })}
+            onChangeLaunch={(v) => updateProject(id, { launchDate: v })}
+            readOnly={readOnly}
+            gateCount={project.milestones.filter((m) => (m.anchorType ?? 'none') !== 'none').length}
+          />
+        </div>
         <MilestoneList
           milestones={project.milestones}
           onAdd={(data) => addMilestone(id, data)}
@@ -44,6 +56,8 @@ export default function EventTimeline() {
           onMove={(mid, dir) => moveMilestone(id, mid, dir)}
           onReorder={(ids) => reorderMilestones(id, ids)}
           readOnly={readOnly}
+          module="event"
+          anchors={{ event: project.eventDate, launch: project.launchDate }}
         />
       </PageSection>
 
