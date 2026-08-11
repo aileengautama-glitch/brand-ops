@@ -5,10 +5,12 @@ import { useCurrentUser } from '@/hooks/useCurrentUser'
 import ProjectHeader from '@/components/layout/ProjectHeader'
 import PageSection from '@/components/layout/PageSection'
 import DecisionList from '@/components/decisions/DecisionList'
+import { resolveApproval } from '@/lib/approvalEngine'
 
 /**
- * Per-project decision queue — everything awaiting sign-off on this shoot, with
- * options, recommendation, cost impact and needed-by. Decided rows stay as the log.
+ * Per-project approvals — everything awaiting sign-off on this shoot. Approving
+ * writes the linked fields, clears linked gates, releases blocked tasks and notifies
+ * the owners; resolved rows stay as the log with their change history.
  */
 export default function ShootDecisions() {
   const { id } = useParams<{ id: string }>()
@@ -33,17 +35,24 @@ export default function ShootDecisions() {
         onUpdateDescription={(description) => updateProject(id, { description })}
       />
 
-      <PageSection label={`Decisions${open > 0 ? ` — ${open} open` : ''}`} card>
+      <PageSection label={`Approvals${open > 0 ? ` — ${open} open` : ''}`} card>
         <p className="text-xs text-ink-muted mb-3">
-          Raise anything that needs sign-off here rather than in a message — the answer is recorded
-          against the decision, with who decided and when.
+          Raise anything that needs sign-off here rather than in a message. Link the fields, gates
+          and tasks it unblocks — approving applies them automatically and records who and when.
         </p>
         <DecisionList
           decisions={decisions}
           onAdd={(data) => addDecision(id, data)}
           onUpdate={(did, patch) => updateDecision(id, did, patch)}
           onRemove={(did) => removeDecision(id, did)}
+          onResolve={(approval, status) => resolveApproval({
+            module: 'shoot', projectId: id, projectName: project.name,
+            approval, status, by: user?.name || 'Unknown',
+          })}
           currentUserName={user?.name}
+          module="shoot"
+          gates={project.milestones}
+          tasks={project.tasks}
         />
       </PageSection>
     </div>

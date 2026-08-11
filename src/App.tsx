@@ -96,7 +96,8 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Home /> },
       { path: 'my-tasks', element: <MyTasks /> },
-      { path: 'decisions', element: <DecisionQueue /> },
+      { path: 'approvals', element: <DecisionQueue /> },
+      { path: 'decisions', element: <Navigate to="/approvals" replace /> },
       { path: 'help', element: <Help /> },
       { path: 'settings', element: <Settings /> },
 
@@ -112,7 +113,8 @@ const router = createBrowserRouter([
       { path: 'events/:id/creative', element: evtSec('event.creative', <EventCreative />) },
       { path: 'events/:id/collaterals', element: evtSec('event.collaterals', <EventCollaterals />) },
       { path: 'events/:id/props', element: evtSec('event.props', <EventProps />) },
-      { path: 'events/:id/decisions', element: evtProj(<EventDecisions />) },
+      { path: 'events/:id/approvals', element: evtProj(<EventDecisions />) },
+      { path: 'events/:id/decisions', element: <Navigate to="../approvals" replace /> },
       { path: 'events/:id/brief-deck', element: evtProj(<EventBriefDeck />) },
 
       // ── Magazine ────────────────────────────────────────────────────────
@@ -150,7 +152,8 @@ const router = createBrowserRouter([
       { path: 'shoots/:id/call-sheet', element: shtSec('shoot.callsheet', <ShootCallSheet />) },
       { path: 'shoots/:id/props', element: shtSec('shoot.props', <ShootProps />) },
       { path: 'shoots/:id/shot-brief', element: shtSec('shoot.brief', <ShootBrief />) },
-      { path: 'shoots/:id/decisions', element: shtProj(<ShootDecisions />) },
+      { path: 'shoots/:id/approvals', element: shtProj(<ShootDecisions />) },
+      { path: 'shoots/:id/decisions', element: <Navigate to="../approvals" replace /> },
       { path: 'shoots/:id/brief-deck', element: shtProj(<ShootBriefDeck />) },
     ],
   },

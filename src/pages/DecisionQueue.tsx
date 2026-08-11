@@ -11,11 +11,12 @@ import { CircleDot, ExternalLink, AlertTriangle, Check } from 'lucide-react'
 import { useShootStore } from '@/store/useShootStore'
 import { useEventStore } from '@/store/useEventStore'
 import { formatDate, cn } from '@/lib/utils'
+import { APPROVAL_STATUS_META, isResolved } from '@/lib/approvalEngine'
 import { daysUntil } from '@/lib/scheduleEngine'
-import type { Decision } from '@/types/common'
+import type { Approval } from '@/types/common'
 
 interface QueueRow {
-  decision: Decision
+  decision: Approval
   projectId: string
   projectName: string
   module: 'shoot' | 'event'
@@ -45,7 +46,7 @@ export default function DecisionQueue() {
   }, [shootProjects, eventProjects])
 
   const open = rows.filter((r) => r.decision.status === 'open')
-  const decided = rows.filter((r) => r.decision.status === 'decided')
+  const decided = rows.filter((r) => isResolved(r.decision.status))
   const visible = showDecided ? rows : open
   const overdueCount = open.filter((r) => {
     const d = r.decision.neededBy ? daysUntil(r.decision.neededBy) : null
@@ -55,7 +56,7 @@ export default function DecisionQueue() {
   return (
     <div className="p-6 max-w-5xl">
       <div className="mb-5">
-        <h1 className="text-base font-semibold text-ink">Decision Queue</h1>
+        <h1 className="text-base font-semibold text-ink">Approval Queue</h1>
         <p className="text-xs text-ink-muted mt-0.5">
           Everything awaiting sign-off across shoots and events, soonest first.
           {overdueCount > 0 && <span className="text-red-500 font-medium"> {overdueCount} past its needed-by date.</span>}
@@ -64,12 +65,12 @@ export default function DecisionQueue() {
 
       <div className="flex items-center gap-3 mb-3">
         <span className="text-2xs font-bold uppercase tracking-widest text-ink-faint">
-          {open.length} open{decided.length > 0 ? ` · ${decided.length} decided` : ''}
+          {open.length} open{decided.length > 0 ? ` · ${decided.length} resolved` : ''}
         </span>
         {decided.length > 0 && (
           <button onClick={() => setShowDecided((v) => !v)}
             className="text-xs text-ink-muted hover:text-ink transition-colors">
-            {showDecided ? 'Hide decided' : 'Show decided'}
+            {showDecided ? 'Hide resolved' : 'Show resolved'}
           </button>
         )}
       </div>
@@ -77,8 +78,8 @@ export default function DecisionQueue() {
       {visible.length === 0 ? (
         <div className="bg-surface-1 border border-dashed border-surface-3 rounded-lg p-10 text-center">
           <CircleDot size={22} className="text-ink-faint mx-auto mb-2" />
-          <p className="text-sm text-ink-muted">Nothing waiting on a decision.</p>
-          <p className="text-xs text-ink-faint mt-1">Raise decisions from a project's Decisions page.</p>
+          <p className="text-sm text-ink-muted">Nothing waiting on an approval.</p>
+          <p className="text-xs text-ink-faint mt-1">Raise approvals from a project's Approvals page.</p>
         </div>
       ) : (
         <div className="bg-white border border-surface-3 rounded overflow-hidden">
@@ -86,7 +87,7 @@ export default function DecisionQueue() {
             <thead>
               <tr className="border-b border-surface-3 bg-surface-1">
                 <th className="text-left text-2xs font-bold uppercase tracking-widest text-ink-faint px-3 py-2 w-20">Status</th>
-                <th className="text-left text-2xs font-bold uppercase tracking-widest text-ink-faint px-3 py-2">Decision</th>
+                <th className="text-left text-2xs font-bold uppercase tracking-widest text-ink-faint px-3 py-2">Approval</th>
                 <th className="text-left text-2xs font-bold uppercase tracking-widest text-ink-faint px-3 py-2 w-44">Project</th>
                 <th className="text-left text-2xs font-bold uppercase tracking-widest text-ink-faint px-3 py-2 w-32">Recommendation</th>
                 <th className="text-left text-2xs font-bold uppercase tracking-widest text-ink-faint px-3 py-2 w-24">Cost</th>
@@ -101,11 +102,9 @@ export default function DecisionQueue() {
                   <tr key={`${projectId}-${d.id}`} className="border-b border-surface-3 last:border-0 hover:bg-surface-1/40 transition-colors">
                     <td className="px-3 py-2 align-top">
                       <span className={cn('text-2xs px-1.5 py-0.5 rounded border inline-flex items-center gap-1',
-                        d.status === 'decided'
-                          ? 'bg-accent/10 text-accent border-accent/30'
-                          : 'bg-amber-50 text-amber-700 border-amber-200')}>
-                        {d.status === 'decided' && <Check size={9} />}
-                        {d.status === 'decided' ? 'Decided' : 'Open'}
+                        (APPROVAL_STATUS_META[d.status] ?? APPROVAL_STATUS_META.open).chip)}>
+                        {d.status === 'approved' && <Check size={9} />}
+                        {(APPROVAL_STATUS_META[d.status] ?? APPROVAL_STATUS_META.open).label}
                       </span>
                     </td>
                     <td className="px-3 py-2 align-top">
@@ -113,7 +112,7 @@ export default function DecisionQueue() {
                       <span className="block text-2xs text-ink-faint">{d.category}</span>
                     </td>
                     <td className="px-3 py-2 align-top">
-                      <Link to={`/${module}s/${projectId}/decisions`}
+                      <Link to={`/${module}s/${projectId}/approvals`}
                         className="inline-flex items-center gap-1 text-xs text-accent hover:underline">
                         {projectName} <ExternalLink size={10} />
                       </Link>
@@ -121,7 +120,7 @@ export default function DecisionQueue() {
                     <td className="px-3 py-2 align-top text-xs text-ink-muted">{d.recommendation || '—'}</td>
                     <td className="px-3 py-2 align-top text-xs text-ink-muted">{d.costImpact || '—'}</td>
                     <td className="px-3 py-2 align-top">
-                      {d.status === 'decided' ? (
+                      {isResolved(d.status) ? (
                         <span className="text-2xs text-ink-faint">{d.decidedBy}{d.decidedOn ? ` · ${formatDate(d.decidedOn)}` : ''}</span>
                       ) : d.neededBy ? (
                         <span className={cn('text-xs inline-flex items-center gap-1',

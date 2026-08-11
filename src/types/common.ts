@@ -25,6 +25,8 @@ export interface Task {
   assignedTo: string    // team/crew member id, '' if unassigned
   createdAt: string
   updatedAt: string
+  /** Waiting on this approval — cleared (released) when it is approved. */
+  blockedByApprovalId?: string
 }
 
 /**
@@ -48,6 +50,8 @@ export interface TimelineMilestone {
   anchorType?: MilestoneAnchor  // undefined = 'none'
   offsetDays?: number           // days BEFORE the anchor (28 = "28 days before")
   owner?: string                // named owner — a gate should never be unowned
+  completed?: boolean           // a gate is cleared, not just dated
+  completedAt?: string          // ISO timestamp — set when completed flips true
 }
 
 /**
@@ -56,31 +60,70 @@ export interface TimelineMilestone {
  * and a needed-by date, so the approver can answer in one pass. Once decided it
  * records who decided and when, making the list double as a decision log.
  */
-export type DecisionStatus = 'open' | 'decided'
+/**
+ * 'decided' is the legacy Phase-1 value and is still accepted on read; new
+ * approvals resolve to approved / declined / changed.
+ */
+export type ApprovalStatus = 'open' | 'approved' | 'declined' | 'changed' | 'decided'
 
-export interface DecisionOption {
+export interface ApprovalOption {
   id: string
   label: string
   /** Cost impact of THIS option, free text (e.g. '+$450', 'no change'). */
   costImpact: string
 }
 
-export interface Decision {
+/**
+ * A project field this approval writes to when it is approved. `field` is a key
+ * into the per-module registry in lib/approvalTargets.ts, which owns the actual
+ * read/write so nothing here has to know the project shape.
+ */
+export interface ApprovalTarget {
+  id: string
+  field: string       // ApprovalFieldKey — e.g. 'budget.total', 'brief.location'
+  value: string       // the value written on approval
+}
+
+/** One recorded field change, so every automatic update is auditable. */
+export interface ApprovalChange {
+  id: string
+  at: string          // ISO timestamp
+  by: string
+  label: string       // human label of what changed
+  oldValue: string
+  newValue: string
+}
+
+export interface Approval {
   id: string
   title: string             // the question being asked
   category: string          // e.g. Budget, Crew, Location, Photographer, Model
-  options: DecisionOption[]
+  options: ApprovalOption[]
   recommendation: string    // the stated recommendation (id of an option, or free text)
   costImpact: string        // overall cost impact summary
   neededBy: string          // ISO date — when the answer is required
-  status: DecisionStatus
+  status: ApprovalStatus
   decidedBy: string
-  decidedOn: string         // ISO date — stamped when status flips to 'decided'
+  decidedOn: string         // ISO date — stamped when the approval is resolved
   outcome: string           // what was actually decided
   notes: string
   order: number
   createdAt: string
+  // ── Automatic updates (all optional → Phase 1 rows keep working) ──
+  /** Project fields written when this is approved. */
+  targets?: ApprovalTarget[]
+  /** Milestones marked complete when this is approved. */
+  linkedGateIds?: string[]
+  /** Tasks released (unblocked) when this is approved. */
+  linkedTaskIds?: string[]
+  /** Audit trail of every field change this approval caused. */
+  changeLog?: ApprovalChange[]
 }
+
+/** @deprecated Phase 1 name — kept so existing imports keep compiling. */
+export type Decision = Approval
+export type DecisionOption = ApprovalOption
+export type DecisionStatus = ApprovalStatus
 
 export interface DayOfSlot {
   id: string

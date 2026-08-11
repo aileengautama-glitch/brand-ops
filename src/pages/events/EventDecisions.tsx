@@ -5,9 +5,10 @@ import { useCurrentUser } from '@/hooks/useCurrentUser'
 import ProjectHeader from '@/components/layout/ProjectHeader'
 import PageSection from '@/components/layout/PageSection'
 import DecisionList from '@/components/decisions/DecisionList'
+import { resolveApproval } from '@/lib/approvalEngine'
 
 /**
- * Per-project decision queue for an event — same contract as the shoot version.
+ * Per-project approvals for an event — same contract as the shoot version.
  */
 export default function EventDecisions() {
   const { id } = useParams<{ id: string }>()
@@ -32,17 +33,24 @@ export default function EventDecisions() {
         onUpdateDescription={(description) => updateProject(id, { description })}
       />
 
-      <PageSection label={`Decisions${open > 0 ? ` — ${open} open` : ''}`} card>
+      <PageSection label={`Approvals${open > 0 ? ` — ${open} open` : ''}`} card>
         <p className="text-xs text-ink-muted mb-3">
-          Raise anything that needs sign-off here rather than in a message — the answer is recorded
-          against the decision, with who decided and when.
+          Raise anything that needs sign-off here rather than in a message. Link the fields, gates
+          and tasks it unblocks — approving applies them automatically and records who and when.
         </p>
         <DecisionList
           decisions={decisions}
           onAdd={(data) => addDecision(id, data)}
           onUpdate={(did, patch) => updateDecision(id, did, patch)}
           onRemove={(did) => removeDecision(id, did)}
+          onResolve={(approval, status) => resolveApproval({
+            module: 'event', projectId: id, projectName: project.name,
+            approval, status, by: user?.name || 'Unknown',
+          })}
           currentUserName={user?.name}
+          module="event"
+          gates={project.milestones}
+          tasks={project.tasks}
         />
       </PageSection>
     </div>

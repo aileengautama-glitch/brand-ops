@@ -8,6 +8,7 @@ import { useMagazineStore } from '@/store/useMagazineStore'
 import { useUserStore } from '@/store/useUserStore'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import NotificationBell from '@/components/layout/NotificationBell'
 import { UserChip } from '@/components/auth/UserSelector'
 
 export default function TopBar() {
@@ -205,11 +206,12 @@ export default function TopBar() {
           My Tasks
         </Link>
         <Link
-          to="/decisions"
+          to="/approvals"
           className="flex items-center text-xs text-ink-faint hover:text-ink transition-colors px-2"
         >
-          Decisions
+          Approvals
         </Link>
+        <NotificationBell />
         <Link
           to="/help"
           className="flex items-center text-xs text-ink-faint hover:text-ink transition-colors px-2"

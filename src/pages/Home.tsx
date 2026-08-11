@@ -4,6 +4,7 @@ import { useEventStore } from '@/store/useEventStore'
 import { useShootStore } from '@/store/useShootStore'
 import { useMagazineStore } from '@/store/useMagazineStore'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
+import RecentApprovals from '@/components/decisions/RecentApprovals'
 
 export default function Home() {
   const eventProjects    = useEventStore((s) => s.projects)
@@ -60,6 +61,11 @@ export default function Home() {
             countLabel="project"
           />
         )}
+      </div>
+
+      {/* What's been signed off lately, and what it changed */}
+      <div className="mt-10">
+        <RecentApprovals />
       </div>
     </div>
   )
