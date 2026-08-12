@@ -16,14 +16,24 @@ import { useRemoteDeckSnapshot } from '@/hooks/useRemoteDeckSnapshot'
 import { buildShootDeckData, type ShootDeckData } from '@/lib/deckSnapshot'
 import { usePrint } from '@/hooks/usePrint'
 import { decodeSections } from '@/lib/shareSections'
+import { buildExternalSections } from '@/lib/sharePresets'
+import { useShareLinkStore, linkState } from '@/store/useShareLinkStore'
 import ShootProjectView from '@/components/share/ShootProjectView'
 
 export default function ShootProjectShare() {
   const { id } = useParams<{ id: string }>()
   const [params] = useSearchParams()
-  const sections = decodeSections(params.get('s'))
+  const token = params.get('t') ?? ''
+  const requested = decodeSections(params.get('s'))
   const localProject = useShootStore((s) => s.projects.find((p) => p.id === id))
+  const links = useShareLinkStore((s) => s.links)
   const triggerPrint = usePrint('portrait')
+
+  // A tokened link is an issued external link: it can be revoked or expire, and it
+  // can never show money or internal reasoning whatever the URL asks for.
+  const issued = token ? links[token] : null
+  const state = token ? linkState(issued) : 'active'
+  const sections = token ? buildExternalSections(requested) : requested
 
   useEnsureProjectMedia(id)
   const { snapshot, loading } = useRemoteDeckSnapshot(id, !!localProject)
@@ -33,6 +43,21 @@ export default function ShootProjectShare() {
     : snapshot
       ? (snapshot.payload as unknown as ShootDeckData)
       : null
+
+  if (token && (state === 'revoked' || state === 'expired')) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-8">
+        <div className="text-center max-w-sm">
+          <p className="text-sm font-medium text-ink">
+            {state === 'revoked' ? 'This link has been revoked' : 'This link has expired'}
+          </p>
+          <p className="text-xs text-ink-muted mt-1">
+            Ask whoever sent it for a new one.
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   if (!id || !data) {
     return (
