@@ -28,6 +28,7 @@ import { useEventStore } from '@/store/useEventStore'
 import { useShootStore } from '@/store/useShootStore'
 import { useMagazineStore } from '@/store/useMagazineStore'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
+import { approvalAbility } from '@/lib/approvalRoles'
 import type { SectionKey } from '@/auth/permissions'
 
 type NavItem = {
@@ -38,6 +39,8 @@ type NavItem = {
   sectionKey?: SectionKey
   /** When true, the tab is only shown to workspace admins. */
   adminOnly?: boolean
+  /** When true, the tab is hidden from roles with no approvals access. */
+  approvalsOnly?: boolean
 }
 
 const eventNavItems: NavItem[] = [
@@ -50,7 +53,7 @@ const eventNavItems: NavItem[] = [
   { label: 'Creative', path: 'creative', icon: Palette, sectionKey: 'event.creative' },
   { label: 'Collaterals', path: 'collaterals', icon: Layers, sectionKey: 'event.collaterals' },
   { label: 'Props', path: 'props', icon: Box, sectionKey: 'event.props' },
-  { label: 'Approvals', path: 'approvals', icon: CircleDot },
+  { label: 'Approvals', path: 'approvals', icon: CircleDot, approvalsOnly: true },
   // Overview & Share is shoots-only for now — the scoped project view is built
   // against the shoot data model. Events keep the brief deck.
   { label: 'Brief Deck', path: 'brief-deck', icon: FileText },
@@ -84,7 +87,7 @@ const shootNavItems: NavItem[] = [
   { label: 'Creative & Shot List', path: 'creative', icon: Palette, sectionKey: 'shoot.creative' },
   { label: 'Shot Brief', path: 'shot-brief', icon: Camera, sectionKey: 'shoot.brief' },
   { label: 'Call Sheet', path: 'call-sheet', icon: ClipboardList, sectionKey: 'shoot.callsheet' },
-  { label: 'Approvals', path: 'approvals', icon: CircleDot },
+  { label: 'Approvals', path: 'approvals', icon: CircleDot, approvalsOnly: true },
   { label: 'Overview & Share', path: 'overview', icon: Share2 },
   { label: 'Brief Deck', path: 'brief-deck', icon: FileText },
 ]
@@ -92,7 +95,8 @@ const shootNavItems: NavItem[] = [
 export default function Sidebar() {
   const location = useLocation()
   const { id } = useParams()
-  const { canViewSection, isAdmin } = useCurrentUser()
+  const { canViewSection, isAdmin, user, isLoggedIn } = useCurrentUser()
+  const approvals = approvalAbility(user?.role, isAdmin, isLoggedIn)
 
   const isEvents   = location.pathname.startsWith('/events')
   const isShoots   = location.pathname.startsWith('/shoots')
@@ -111,6 +115,7 @@ export default function Sidebar() {
   const navItems = allNavItems.filter(
     (item) =>
       (!item.adminOnly || isAdmin) &&
+      (!item.approvalsOnly || approvals.canAccess) &&
       (!item.sectionKey || !id || canViewSection(item.sectionKey, id))
   )
   const projects = isEvents ? eventProjects : isShoots ? shootProjects : magazineProjects

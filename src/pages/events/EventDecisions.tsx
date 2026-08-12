@@ -7,6 +7,7 @@ import PageSection from '@/components/layout/PageSection'
 import DecisionList from '@/components/decisions/DecisionList'
 import { resolveApproval, sendBackApproval } from '@/lib/approvalEngine'
 import { approvalAbility } from '@/lib/approvalRoles'
+import ApprovalsNoAccess from '@/components/decisions/ApprovalsNoAccess'
 
 /**
  * Per-project approvals for an event — same contract as the shoot version.
@@ -23,6 +24,8 @@ export default function EventDecisions() {
   if (!project || !id) return <div className="p-6 text-sm text-ink-muted">Project not found.</div>
 
   const ability = approvalAbility(user?.role, isAdmin, isLoggedIn)
+  if (!ability.canAccess) return <ApprovalsNoAccess />
+
   const decisions = project.decisions ?? []
   const open = decisions.filter((d) => d.status === 'open').length
 

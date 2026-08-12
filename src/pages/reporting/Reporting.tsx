@@ -12,6 +12,8 @@ import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { CalendarClock, AlertTriangle, LayoutList, CircleDot, Wallet, ExternalLink } from 'lucide-react'
 import { useShootStore } from '@/store/useShootStore'
+import { useCurrentUser } from '@/hooks/useCurrentUser'
+import { approvalAbility } from '@/lib/approvalRoles'
 import { useEventStore } from '@/store/useEventStore'
 import { cn, formatDate } from '@/lib/utils'
 import {
@@ -36,6 +38,8 @@ const TABS: { key: Tab; label: string; icon: React.ElementType }[] = [
 export default function Reporting() {
   const [params, setParams] = useSearchParams()
   const tab = (params.get('tab') as Tab) ?? 'week'
+  const { user, isAdmin, isLoggedIn } = useCurrentUser()
+  const approvalsAccess = approvalAbility(user?.role, isAdmin, isLoggedIn).canAccess
   const shoots = useShootStore((s) => s.projects)
   const events = useEventStore((s) => s.projects)
 
@@ -72,7 +76,7 @@ export default function Reporting() {
 
       {/* Tabs */}
       <div className="flex flex-wrap items-center gap-1 mb-5 border-b border-surface-3">
-        {TABS.map(({ key, label, icon: Icon }) => (
+        {TABS.filter((t) => t.key !== 'approvals' || approvalsAccess).map(({ key, label, icon: Icon }) => (
           <button
             key={key}
             onClick={() => setTab(key)}
@@ -113,7 +117,9 @@ export default function Reporting() {
 
       {tab === 'season' && <SeasonTimeline gates={gates} shoots={shoots} events={events} />}
 
-      {tab === 'approvals' && <ApprovalTable rows={pending} />}
+      {tab === 'approvals' && (approvalsAccess
+        ? <ApprovalTable rows={pending} />
+        : <Empty title="Approvals aren’t part of your role" body="Raised by the Art Director or Producer, signed off by the Head of Marketing." />)}
     </div>
   )
 }

@@ -135,7 +135,10 @@ export default function DecisionList({
             <tbody>
               {ROLE_MATRIX.map((r) => (
                 <tr key={r.who} className="border-t border-surface-3">
-                  <td className="py-1 text-ink">{r.who}</td>
+                  <td className="py-1 text-ink">
+                    {r.who}
+                    {r.note && <span className="ml-1 text-2xs text-ink-faint">({r.note})</span>}
+                  </td>
                   <td className="py-1">{r.raise ? <Check size={12} className="text-accent" /> : <span className="text-ink-faint">—</span>}</td>
                   <td className="py-1">{r.approve ? <Check size={12} className="text-accent" /> : <span className="text-ink-faint">—</span>}</td>
                 </tr>

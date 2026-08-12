@@ -10,6 +10,9 @@ import { Link } from 'react-router-dom'
 import { CircleDot, ExternalLink, AlertTriangle, Check } from 'lucide-react'
 import { useShootStore } from '@/store/useShootStore'
 import { useEventStore } from '@/store/useEventStore'
+import { useCurrentUser } from '@/hooks/useCurrentUser'
+import { approvalAbility } from '@/lib/approvalRoles'
+import ApprovalsNoAccess from '@/components/decisions/ApprovalsNoAccess'
 import { formatDate, cn } from '@/lib/utils'
 import { APPROVAL_STATUS_META, isResolved } from '@/lib/approvalEngine'
 import { daysUntil } from '@/lib/scheduleEngine'
@@ -26,6 +29,8 @@ export default function DecisionQueue() {
   const shootProjects = useShootStore((s) => s.projects)
   const eventProjects = useEventStore((s) => s.projects)
   const [showDecided, setShowDecided] = useState(false)
+  const { user, isAdmin, isLoggedIn } = useCurrentUser()
+  const ability = approvalAbility(user?.role, isAdmin, isLoggedIn)
 
   const rows = useMemo<QueueRow[]>(() => {
     const out: QueueRow[] = []
@@ -44,6 +49,8 @@ export default function DecisionQueue() {
       return B.order - A.order
     })
   }, [shootProjects, eventProjects])
+
+  if (!ability.canAccess) return <ApprovalsNoAccess />
 
   const open = rows.filter((r) => r.decision.status === 'open')
   const decided = rows.filter((r) => isResolved(r.decision.status))

@@ -7,6 +7,7 @@ import { useShootStore } from '@/store/useShootStore'
 import { useMagazineStore } from '@/store/useMagazineStore'
 import { useUserStore } from '@/store/useUserStore'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
+import { approvalAbility } from '@/lib/approvalRoles'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import NotificationBell from '@/components/layout/NotificationBell'
 import { UserChip } from '@/components/auth/UserSelector'
@@ -32,7 +33,8 @@ export default function TopBar() {
   const clearShootProjects   = useShootStore((s) => s.clearAll)
   const clearMagazineProjects = useMagazineStore((s) => s.clearAll)
 
-  const { user, isAdmin, allowedModules, canView } = useCurrentUser()
+  const { user, isAdmin, allowedModules, canView, isLoggedIn } = useCurrentUser()
+  const approvalsAccess = approvalAbility(user?.role, isAdmin, isLoggedIn).canAccess
   const memberships = useUserStore((s) => s.memberships)
 
   const allProjects = isEvents ? eventProjects : isShoots ? shootProjects : isMagazine ? magazineProjects : []
@@ -211,12 +213,14 @@ export default function TopBar() {
         >
           Reporting
         </Link>
-        <Link
-          to="/approvals"
-          className="flex items-center text-xs text-ink-faint hover:text-ink transition-colors px-2"
-        >
-          Approvals
-        </Link>
+        {approvalsAccess && (
+          <Link
+            to="/approvals"
+            className="flex items-center text-xs text-ink-faint hover:text-ink transition-colors px-2"
+          >
+            Approvals
+          </Link>
+        )}
         <NotificationBell />
         <Link
           to="/help"
