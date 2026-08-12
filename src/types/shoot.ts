@@ -194,6 +194,11 @@ export interface ShootProject {
   createdAt: string
   updatedAt: string
 
+  /** Season this project belongs to, e.g. 'S/S27'. Optional for legacy rows;
+   *  required in the creation form. Grouping/reporting key — the season BRIEF
+   *  itself stays in Notion. */
+  season?: string
+
   // ── Scheduling anchors (ISO dates; optional on legacy projects) ──
   // Distinct from briefDetails.shootDate, which is free text for the deck cover.
   // These drive the milestone scheduling engine — see lib/scheduleEngine.ts.

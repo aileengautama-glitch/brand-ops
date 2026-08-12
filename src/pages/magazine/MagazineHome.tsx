@@ -5,6 +5,9 @@ import { useMagazineStore } from '@/store/useMagazineStore'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { formatDate } from '@/lib/utils'
 import PageHeader from '@/components/layout/PageHeader'
+import SeasonDateFields from '@/components/ui/SeasonDateFields'
+import SeasonFilterBar, { ALL_SEASONS } from '@/components/ui/SeasonFilterBar'
+import { defaultSeason, groupBySeason, seasonsPresent, UNASSIGNED_SEASON_LABEL } from '@/lib/seasons'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { MagazineProjectRepository } from '@/repositories'
 import type { MagazineProjectSummary } from '@/repositories'
@@ -16,6 +19,7 @@ import type { MagazineProject } from '@/types/magazine'
 function toSummary(p: MagazineProject): MagazineProjectSummary {
   return {
     id:              p.id,
+    season:          p.season,
     name:            p.name,
     description:     p.description,
     editionNumber:   p.editionNumber,
@@ -129,6 +133,7 @@ export default function MagazineHome() {
   // Writes + reactivity signal: store subscription drives effect re-runs on create/delete
   const storeProjects = useMagazineStore((s) => s.projects)
   const addProject    = useMagazineStore((s) => s.addProject)
+  const updateProject = useMagazineStore((s) => s.updateProject)
   const removeProject = useMagazineStore((s) => s.removeProject)
   const navigate      = useNavigate()
 
@@ -151,6 +156,9 @@ export default function MagazineHome() {
   const [name, setName]               = useState('')
   const [description, setDescription] = useState('')
   const [deleteId, setDeleteId]       = useState<string | null>(null)
+  const [season, setSeason]           = useState(defaultSeason())
+  const [publishDate, setPublishDate] = useState('')
+  const [seasonFilter, setSeasonFilter] = useState<string>(ALL_SEASONS)
 
   // Module-level access gate — configurable in Settings → Team Access
   if (isLoggedIn && !allowedModules.includes('magazine')) {
@@ -172,11 +180,27 @@ export default function MagazineHome() {
   //   admin → all · scoped grants → granted projects only · legacy (no grants) → all
   const visibleProjects = isLoggedIn ? allSummaries.filter((p) => canView('magazine', p.id)) : allSummaries
 
+  // Season grouping / filtering
+  const seasonOptions = seasonsPresent(visibleProjects)
+  const seasonCounts: Record<string, number> = {}
+  for (const p of visibleProjects) seasonCounts[p.season?.trim() || ''] = (seasonCounts[p.season?.trim() || ''] ?? 0) + 1
+  const hasUnassigned = visibleProjects.some((p) => !p.season?.trim())
+  const filtered = seasonFilter === ALL_SEASONS
+    ? visibleProjects
+    : visibleProjects.filter((p) => (p.season?.trim() || '') === seasonFilter)
+  const seasonGroups = groupBySeason(filtered)
+
+  const canCreate = Boolean(name.trim() && season.trim() && publishDate)
+
   const handleCreate = () => {
-    if (!name.trim()) return
+    if (!canCreate) return
     const project = addProject(name.trim(), description.trim())
+    // Season + publish date immediately, so magazine gates anchored to launch
+    // have a real date from the first render.
+    updateProject(project.id, { season: season.trim(), publicationDate: publishDate })
     setName('')
     setDescription('')
+    setPublishDate('')
     setShowForm(false)
     navigate(`/magazine/${project.id}/board`)
   }
@@ -226,16 +250,23 @@ export default function MagazineHome() {
               onKeyDown={handleKeyDown}
               className="w-full px-3 py-1.5 text-sm border border-surface-3 rounded bg-white focus:outline-none focus:border-accent placeholder:text-ink-faint"
             />
+            <SeasonDateFields
+              season={season} onSeason={setSeason}
+              primaryDate={publishDate} onPrimaryDate={setPublishDate}
+              primaryLabel="Publish date"
+              primaryHint="Offline work counts back from this."
+              showLaunch={false}
+            />
             <div className="flex gap-2 pt-1">
               <button
                 onClick={handleCreate}
-                disabled={!name.trim()}
+                disabled={!canCreate}
                 className="px-3 py-1.5 bg-accent text-white text-sm rounded disabled:opacity-40 hover:bg-accent-dark transition-colors"
               >
                 Create project
               </button>
               <button
-                onClick={() => { setShowForm(false); setName(''); setDescription('') }}
+                onClick={() => { setShowForm(false); setName(''); setDescription(''); setPublishDate('') }}
                 className="px-3 py-1.5 text-sm text-ink-muted hover:text-ink border border-surface-3 rounded transition-colors"
               >
                 Cancel
@@ -254,15 +285,40 @@ export default function MagazineHome() {
           <p className="text-xs mt-1">Create your first issue to get started.</p>
         </div>
       ) : (
-        <div className="space-y-2.5">
-          {visibleProjects.map((project) => (
-            <MagazineProjectCard
-              key={project.id}
-              project={project}
-              onDelete={() => setDeleteId(project.id)}
-            />
-          ))}
-        </div>
+        <>
+          <SeasonFilterBar
+            seasons={seasonOptions}
+            value={seasonFilter}
+            onChange={setSeasonFilter}
+            counts={seasonCounts}
+            hasUnassigned={hasUnassigned}
+          />
+          {filtered.length === 0 ? (
+            <p className="text-sm text-ink-muted py-8 text-center">No issues in this season.</p>
+          ) : (
+            <div className="space-y-6">
+              {seasonGroups.map((group) => (
+                <section key={group.season || 'none'}>
+                  <div className="flex items-baseline gap-2 mb-2">
+                    <h2 className="text-2xs font-bold uppercase tracking-[0.16em] text-ink-faint">
+                      {group.season || UNASSIGNED_SEASON_LABEL}
+                    </h2>
+                    <span className="text-2xs text-ink-faint tabular-nums">{group.items.length}</span>
+                  </div>
+                  <div className="space-y-2.5">
+                    {group.items.map((project) => (
+                      <MagazineProjectCard
+                        key={project.id}
+                        project={project}
+                        onDelete={() => setDeleteId(project.id)}
+                      />
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       <ConfirmDialog

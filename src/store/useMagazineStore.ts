@@ -24,7 +24,7 @@ interface MagazineStoreState {
   updateProject: (
     projectId: string,
     patch: Partial<Pick<MagazineProject,
-      'name' | 'description' | 'editionNumber' | 'publicationDate' | 'theme' | 'status' | 'notes'
+      'name' | 'description' | 'season' | 'editionNumber' | 'publicationDate' | 'theme' | 'status' | 'notes'
     >>
   ) => void
   removeProject: (projectId: string) => void

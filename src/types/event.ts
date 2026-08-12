@@ -99,6 +99,8 @@ export interface EventProject {
   updatedAt: string
 
   // Project metadata
+  /** Season this project belongs to, e.g. 'S/S27'. Optional for legacy rows. */
+  season?: string
   eventDate: string     // ISO date string — scheduling anchor ('event')
   launchDate?: string   // ISO date string — scheduling anchor ('launch'); optional on legacy projects
   venue: string

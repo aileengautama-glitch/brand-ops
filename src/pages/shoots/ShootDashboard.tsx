@@ -57,6 +57,14 @@ export default function ShootDashboard() {
         description={project.description}
         onUpdateName={(name) => updateProject(id, { name })}
         onUpdateDescription={(description) => updateProject(id, { description })}
+        meta={[
+          { label: 'Season', value: project.season ?? '', editable: true,
+            onEdit: (v) => updateProject(id, { season: v }) },
+          { label: 'Shoot date', value: project.shootDateISO ?? '', editable: true,
+            onEdit: (v) => updateProject(id, { shootDateISO: v }) },
+          { label: 'Launch date', value: project.launchDate ?? '', editable: true,
+            onEdit: (v) => updateProject(id, { launchDate: v }) },
+        ]}
       />
 
       {/* ── Metric tiles ───────────────────────────────────────────────── */}

@@ -18,10 +18,21 @@ import { isSupabaseEnabled } from '@/lib/supabase'
 
 export type CreateModule = 'shoot' | 'event'
 
+/** Season + anchor dates captured on the creation form. */
+export interface CreateMeta {
+  season: string
+  /** Shoots only — the 'shoot' anchor. */
+  shootDate?: string
+  /** Shoots: the launch anchor. Events: the event date, used as both. */
+  launchDate?: string
+}
+
 export function useCreateProject(module: CreateModule) {
   const addShoot = useShootStore((s) => s.addProject)
+  const updateShoot = useShootStore((s) => s.updateProject)
   const removeShoot = useShootStore((s) => s.removeProject)
   const addEvent = useEventStore((s) => s.addProject)
+  const updateEvent = useEventStore((s) => s.updateProject)
   const removeEvent = useEventStore((s) => s.removeProject)
 
   const [creating, setCreating] = useState(false)
@@ -31,11 +42,30 @@ export function useCreateProject(module: CreateModule) {
 
   /** Returns the created project id, or null when creation failed. */
   const create = useCallback(
-    async (name: string, description: string): Promise<string | null> => {
+    async (name: string, description: string, meta?: CreateMeta): Promise<string | null> => {
       setCreating(true)
       setError(null)
 
       const project = module === 'shoot' ? addShoot(name, description) : addEvent(name, description)
+
+      // Season + anchor dates are set immediately, so any gate with an
+      // anchorType + offsetDays computes a real deadline on the very first render
+      // of the new project rather than waiting for someone to fill dates in.
+      if (meta) {
+        if (module === 'shoot') {
+          updateShoot(project.id, {
+            season: meta.season,
+            shootDateISO: meta.shootDate ?? '',
+            launchDate: meta.launchDate ?? '',
+          })
+        } else {
+          updateEvent(project.id, {
+            season: meta.season,
+            eventDate: meta.launchDate ?? '',   // the event date IS its anchor
+            launchDate: meta.launchDate ?? '',
+          })
+        }
+      }
 
       // No backend configured — local-only mode, nothing to confirm.
       if (!isSupabaseEnabled) {
@@ -61,7 +91,7 @@ export function useCreateProject(module: CreateModule) {
       setCreating(false)
       return project.id
     },
-    [module, addShoot, removeShoot, addEvent, removeEvent],
+    [module, addShoot, removeShoot, updateShoot, addEvent, removeEvent, updateEvent],
   )
 
   return { create, creating, error, clearError }

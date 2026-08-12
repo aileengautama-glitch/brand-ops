@@ -341,7 +341,9 @@ export interface MagazineProject {
   name: string
   description: string
   editionNumber: string       // free text: "Issue 12", "Vol. 3 No. 2", "Spring 2026"
-  publicationDate: string     // ISO date string, '' if unset
+  publicationDate: string     // ISO date string, '' if unset — the launch anchor
+  /** Season this issue belongs to, e.g. 'S/S27'. Optional for legacy rows. */
+  season?: string
   theme: string               // issue theme / concept line
   status: MagazineProjectStatus
   createdAt: string

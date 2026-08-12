@@ -62,6 +62,7 @@ export default function EventDashboard() {
         onUpdateName={(name) => updateProject(id, { name })}
         onUpdateDescription={(description) => updateProject(id, { description })}
         meta={[
+          { label: 'Season', value: project.season ?? '', editable: true, onEdit: (v) => updateProject(id, { season: v }) },
           { label: 'Date', value: project.eventDate ? formatDate(project.eventDate) : '', editable: true, onEdit: (v) => updateProject(id, { eventDate: v }) },
           { label: 'Venue', value: project.venue, editable: true, onEdit: (v) => updateProject(id, { venue: v }) },
           { label: 'Run time', value: project.runTime, editable: true, onEdit: (v) => updateProject(id, { runTime: v }) },

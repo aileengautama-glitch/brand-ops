@@ -7,6 +7,9 @@ import { useBackendStatus } from '@/store/useBackendStatus'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { formatDate } from '@/lib/utils'
 import PageHeader from '@/components/layout/PageHeader'
+import SeasonDateFields from '@/components/ui/SeasonDateFields'
+import SeasonFilterBar, { ALL_SEASONS } from '@/components/ui/SeasonFilterBar'
+import { defaultSeason, groupBySeason, seasonsPresent, UNASSIGNED_SEASON_LABEL } from '@/lib/seasons'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import type { ShootProject } from '@/types/shoot'
 
@@ -23,6 +26,10 @@ export default function ShootsHome() {
   const [name, setName]               = useState('')
   const [description, setDescription] = useState('')
   const [deleteId, setDeleteId]       = useState<string | null>(null)
+  const [season, setSeason]           = useState(defaultSeason())
+  const [primaryDate, setPrimaryDate] = useState('')
+  const [launchDate, setLaunchDate]   = useState('')
+  const [seasonFilter, setSeasonFilter] = useState<string>(ALL_SEASONS)
 
   // Visibility — centralized in useCurrentUser.canView:
   //   admin → all · scoped grants → granted projects only · legacy → membership
@@ -31,11 +38,23 @@ export default function ShootsHome() {
     return projects.filter((p) => canView('shoot', p.id))
   })()
 
+  // Season grouping / filtering — computed from what's actually in the list.
+  const seasonOptions = seasonsPresent(visibleProjects)
+  const seasonCounts: Record<string, number> = {}
+  for (const p of visibleProjects) seasonCounts[p.season?.trim() || ''] = (seasonCounts[p.season?.trim() || ''] ?? 0) + 1
+  const hasUnassigned = visibleProjects.some((p) => !p.season?.trim())
+  const filtered = seasonFilter === ALL_SEASONS
+    ? visibleProjects
+    : visibleProjects.filter((p) => (p.season?.trim() || '') === seasonFilter)
+  const seasonGroups = groupBySeason(filtered)
+
+  const canCreate = Boolean(name.trim() && season.trim() && primaryDate && launchDate)
+
   const handleCreate = async () => {
-    if (!name.trim() || creating) return
-    const id = await create(name.trim(), description.trim())
+    if (!canCreate || creating) return
+    const id = await create(name.trim(), description.trim(), { season: season.trim(), shootDate: primaryDate, launchDate })
     if (!id) return   // failed — error is shown, nothing was added
-    setName(''); setDescription(''); setShowForm(false)
+    setName(''); setDescription(''); setPrimaryDate(''); setLaunchDate(''); setShowForm(false)
     navigate(`/shoots/${id}/dashboard`)
   }
 
@@ -86,6 +105,13 @@ export default function ShootsHome() {
             <input type="text" placeholder="Short description (optional)" value={description}
               onChange={(e) => setDescription(e.target.value)} onKeyDown={handleKeyDown}
               className="w-full px-3 py-1.5 text-sm border border-surface-3 rounded bg-white focus:outline-none focus:border-accent placeholder:text-ink-faint" />
+            <SeasonDateFields
+              season={season} onSeason={setSeason}
+              primaryDate={primaryDate} onPrimaryDate={setPrimaryDate}
+              primaryLabel="Shoot date" primaryHint="Pre-production counts back from this."
+              launchDate={launchDate} onLaunchDate={setLaunchDate}
+              launchLabel="Launch date" launchHint="Post-production counts back from this."
+            />
             {createError && (
               <div className="flex items-start gap-2 px-2.5 py-2 rounded border border-red-200 bg-red-50 text-xs text-red-700">
                 <AlertTriangle size={13} className="shrink-0 mt-0.5" />
@@ -97,7 +123,7 @@ export default function ShootsHome() {
               </div>
             )}
             <div className="flex gap-2 pt-1">
-              <button onClick={handleCreate} disabled={!name.trim() || creating}
+              <button onClick={handleCreate} disabled={!canCreate || creating}
                 className="px-3 py-1.5 bg-accent text-white text-sm rounded disabled:opacity-40 hover:bg-accent-dark transition-colors">
                 {creating ? "Creating…" : "Create project"}
               </button>
@@ -148,15 +174,40 @@ export default function ShootsHome() {
           <p className="text-sm text-ink-muted">No shoots linked to your profile yet.</p>
         </div>
       ) : (
-        <div className="space-y-2.5">
-          {visibleProjects.map((project) => (
-            <ShootProjectCard
-              key={project.id}
-              project={project}
-              onDelete={() => setDeleteId(project.id)}
-            />
-          ))}
-        </div>
+        <>
+          <SeasonFilterBar
+            seasons={seasonOptions}
+            value={seasonFilter}
+            onChange={setSeasonFilter}
+            counts={seasonCounts}
+            hasUnassigned={hasUnassigned}
+          />
+          {filtered.length === 0 ? (
+            <p className="text-sm text-ink-muted py-8 text-center">No projects in this season.</p>
+          ) : (
+            <div className="space-y-6">
+              {seasonGroups.map((group) => (
+                <section key={group.season || 'none'}>
+                  <div className="flex items-baseline gap-2 mb-2">
+                    <h2 className="text-2xs font-bold uppercase tracking-[0.16em] text-ink-faint">
+                      {group.season || UNASSIGNED_SEASON_LABEL}
+                    </h2>
+                    <span className="text-2xs text-ink-faint tabular-nums">{group.items.length}</span>
+                  </div>
+                  <div className="space-y-2.5">
+                    {group.items.map((project) => (
+                      <ShootProjectCard
+                        key={project.id}
+                        project={project}
+                        onDelete={() => setDeleteId(project.id)}
+                      />
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       <ConfirmDialog

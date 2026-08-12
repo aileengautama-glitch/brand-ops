@@ -30,7 +30,7 @@ interface ShootStoreState {
 
   // ── Project ─────────────────────────────────────────────────────────────────
   addProject: (name: string, description?: string) => ShootProject
-  updateProject: (projectId: string, patch: Partial<Pick<ShootProject, 'name' | 'description' | 'shootDateISO' | 'launchDate'>>) => void
+  updateProject: (projectId: string, patch: Partial<Pick<ShootProject, 'name' | 'description' | 'season' | 'shootDateISO' | 'launchDate'>>) => void
   removeProject: (projectId: string) => void
   clearAll: () => void
   /**

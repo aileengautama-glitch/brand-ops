@@ -120,6 +120,8 @@ export interface IProjectMembersRepository {
 // magazine_project_meta.editorial_status CHECK domain.
 
 export interface MagazineProjectSummary {
+  /** Season label for grouping; optional (legacy rows / remote rows without it). */
+  season?: string
   id: string
   name: string
   description: string

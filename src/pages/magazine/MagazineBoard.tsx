@@ -110,6 +110,12 @@ export default function MagazineBoard() {
         onUpdateDescription={(description) => updateProject(id, { description })}
         meta={[
           {
+            label: 'Season',
+            value: project.season ?? '',
+            editable: canEditBoard,
+            onEdit: (v) => updateProject(id, { season: v }),
+          },
+          {
             label: 'Edition',
             value: displayEdition,
             editable: canEditBoard,
