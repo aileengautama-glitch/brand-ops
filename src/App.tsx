@@ -28,6 +28,8 @@ import EventProps from '@/pages/events/EventProps'
 // Top-level
 import MyTasks from '@/pages/MyTasks'
 import DecisionQueue from '@/pages/DecisionQueue'
+import Reporting from '@/pages/reporting/Reporting'
+import SeasonBudget from '@/pages/reporting/SeasonBudget'
 import ShootDecisions from '@/pages/shoots/ShootDecisions'
 import EventDecisions from '@/pages/events/EventDecisions'
 import Help from '@/pages/Help'
@@ -100,6 +102,8 @@ const router = createBrowserRouter([
       { index: true, element: <Home /> },
       { path: 'my-tasks', element: <MyTasks /> },
       { path: 'approvals', element: <DecisionQueue /> },
+      { path: 'reporting', element: <Reporting /> },
+      { path: 'reporting/budget', element: <SeasonBudget /> },
       { path: 'decisions', element: <Navigate to="/approvals" replace /> },
       { path: 'help', element: <Help /> },
       { path: 'settings', element: <Settings /> },
