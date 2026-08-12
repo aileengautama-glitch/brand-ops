@@ -109,6 +109,16 @@ export interface Approval {
   notes: string
   order: number
   createdAt: string
+  /** Who raised it — attribution for the request, not just the decision. */
+  raisedBy?: string
+  /**
+   * Sent back to the raiser for more information. Status returns to 'open' so it
+   * stays in the queue, but the UI can show that the ball is back in their court.
+   */
+  needsInfo?: boolean
+  /** Budget lines this decision covers — marked approved when it is. */
+  linkedBudgetItemIds?: string[]
+
   // ── Automatic updates (all optional → Phase 1 rows keep working) ──
   /** Project fields written when this is approved. */
   targets?: ApprovalTarget[]

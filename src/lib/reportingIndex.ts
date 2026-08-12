@@ -6,11 +6,13 @@
  * flat shape with the project and season attached, dates already resolved, and status
  * normalised — which is exactly what this produces.
  *
- * The field list mirrors the reporting schema (see migration 0023): projectId, season,
- * type, anchorType, offsetDays, computedDueDate, status, owner for gates; projectId,
- * season, category, neededBy, status, decidedBy, decidedOn, costImpact for approvals.
- * The same shape is what the sync hooks push to Supabase, so a server-side query and
- * this client projection answer identically.
+ * Fields: projectId, season, type, anchorType, offsetDays, computedDueDate, status,
+ * owner for gates; projectId, season, category, neededBy, status, raisedBy, decidedBy,
+ * decidedOn, costImpact for approvals.
+ *
+ * This projection is currently computed client-side over the already-loaded stores.
+ * The shape is deliberately table-shaped so it can be promoted to real Supabase tables
+ * without the views changing — that promotion is not done yet.
  */
 import type { ShootProject } from '@/types/shoot'
 import type { EventProject } from '@/types/event'
@@ -18,6 +20,7 @@ import type { Approval, MilestoneAnchor, TimelineMilestone } from '@/types/commo
 import type { ChecklistItem } from '@/types/checklist'
 import { resolveMilestone, daysUntil, leadTimeWarning, type ProjectAnchors } from '@/lib/scheduleEngine'
 import { isResolved } from '@/lib/approvalEngine'
+import { parseCostImpact } from '@/lib/approvalRoles'
 
 export type ReportModule = 'shoot' | 'event'
 /** Normalised progress — deliberately maps onto not-started / in-progress / complete. */
@@ -60,6 +63,9 @@ export interface ApprovalRow {
   decidedBy: string
   decidedOn: string
   costImpact: string
+  /** Parsed number from costImpact, for totals. 0 when there's no figure. */
+  costValue: number
+  raisedBy: string
   recommendation: string
   daysRemaining: number | null
   /** How many field updates this approval applied, for the log column. */
@@ -182,6 +188,8 @@ export function buildApprovalRows(
         decidedBy: a.decidedBy,
         decidedOn: a.decidedOn,
         costImpact: a.costImpact,
+        costValue: parseCostImpact(a.costImpact),
+        raisedBy: a.raisedBy ?? '',
         recommendation: a.recommendation,
         daysRemaining: a.neededBy ? daysUntil(a.neededBy) : null,
         appliedChanges: (a.changeLog ?? []).length,

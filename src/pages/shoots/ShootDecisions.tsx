@@ -5,7 +5,8 @@ import { useCurrentUser } from '@/hooks/useCurrentUser'
 import ProjectHeader from '@/components/layout/ProjectHeader'
 import PageSection from '@/components/layout/PageSection'
 import DecisionList from '@/components/decisions/DecisionList'
-import { resolveApproval } from '@/lib/approvalEngine'
+import { resolveApproval, sendBackApproval } from '@/lib/approvalEngine'
+import { approvalAbility } from '@/lib/approvalRoles'
 
 /**
  * Per-project approvals — everything awaiting sign-off on this shoot. Approving
@@ -15,7 +16,7 @@ import { resolveApproval } from '@/lib/approvalEngine'
 export default function ShootDecisions() {
   const { id } = useParams<{ id: string }>()
   const project = useCurrentShootProject()
-  const { user } = useCurrentUser()
+  const { user, isAdmin, isLoggedIn } = useCurrentUser()
   const updateProject = useShootStore((s) => s.updateProject)
   const addDecision = useShootStore((s) => s.addDecision)
   const updateDecision = useShootStore((s) => s.updateDecision)
@@ -23,6 +24,7 @@ export default function ShootDecisions() {
 
   if (!project || !id) return <div className="p-6 text-sm text-ink-muted">Project not found.</div>
 
+  const ability = approvalAbility(user?.role, isAdmin, isLoggedIn)
   const decisions = project.decisions ?? []
   const open = decisions.filter((d) => d.status === 'open').length
 
@@ -49,7 +51,14 @@ export default function ShootDecisions() {
             module: 'shoot', projectId: id, projectName: project.name,
             approval, status, by: user?.name || 'Unknown',
           })}
+          onSendBack={(approval, note) => sendBackApproval({
+            module: 'shoot', projectId: id, projectName: project.name,
+            approval, by: user?.name || 'Unknown', note,
+          })}
           currentUserName={user?.name}
+          projectId={id}
+          ability={ability}
+          budgetItems={project.budgetItems ?? []}
           module="shoot"
           gates={project.milestones}
           tasks={project.tasks}

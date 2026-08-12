@@ -5,7 +5,8 @@ import { useCurrentUser } from '@/hooks/useCurrentUser'
 import ProjectHeader from '@/components/layout/ProjectHeader'
 import PageSection from '@/components/layout/PageSection'
 import DecisionList from '@/components/decisions/DecisionList'
-import { resolveApproval } from '@/lib/approvalEngine'
+import { resolveApproval, sendBackApproval } from '@/lib/approvalEngine'
+import { approvalAbility } from '@/lib/approvalRoles'
 
 /**
  * Per-project approvals for an event — same contract as the shoot version.
@@ -13,7 +14,7 @@ import { resolveApproval } from '@/lib/approvalEngine'
 export default function EventDecisions() {
   const { id } = useParams<{ id: string }>()
   const project = useCurrentEventProject()
-  const { user } = useCurrentUser()
+  const { user, isAdmin, isLoggedIn } = useCurrentUser()
   const updateProject = useEventStore((s) => s.updateProject)
   const addDecision = useEventStore((s) => s.addDecision)
   const updateDecision = useEventStore((s) => s.updateDecision)
@@ -21,6 +22,7 @@ export default function EventDecisions() {
 
   if (!project || !id) return <div className="p-6 text-sm text-ink-muted">Project not found.</div>
 
+  const ability = approvalAbility(user?.role, isAdmin, isLoggedIn)
   const decisions = project.decisions ?? []
   const open = decisions.filter((d) => d.status === 'open').length
 
@@ -47,7 +49,14 @@ export default function EventDecisions() {
             module: 'event', projectId: id, projectName: project.name,
             approval, status, by: user?.name || 'Unknown',
           })}
+          onSendBack={(approval, note) => sendBackApproval({
+            module: 'event', projectId: id, projectName: project.name,
+            approval, by: user?.name || 'Unknown', note,
+          })}
           currentUserName={user?.name}
+          projectId={id}
+          ability={ability}
+          budgetItems={project.budgetItems ?? []}
           module="event"
           gates={project.milestones}
           tasks={project.tasks}

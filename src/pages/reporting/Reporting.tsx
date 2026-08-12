@@ -21,6 +21,7 @@ import {
 } from '@/lib/reportingIndex'
 import { groupBySeason, seasonsPresent, UNASSIGNED_SEASON_LABEL } from '@/lib/seasons'
 import { APPROVAL_STATUS_META } from '@/lib/approvalEngine'
+import { APPROVAL_CATEGORIES } from '@/lib/approvalRoles'
 import SeasonTimeline from './SeasonTimeline'
 
 type Tab = 'week' | 'overdue' | 'season' | 'approvals'
@@ -232,18 +233,24 @@ function GateTable({
 function ApprovalTable({ rows }: { rows: ApprovalRow[] }) {
   const [mine, setMine] = useState(false)
   const [season, setSeason] = useState<string>('__all__')
+  const [type, setType] = useState<string>('__all__')
   const seasons = seasonsPresent(rows)
+  const typesPresent = [...new Set(rows.map((r) => r.category))]
+    .sort((a, b) => APPROVAL_CATEGORIES.indexOf(a as never) - APPROVAL_CATEGORIES.indexOf(b as never))
 
   // "Approver's queue" — the decisions a Head of Marketing actually signs off:
   // anything with money attached, plus the explicitly commercial categories.
   const approverCategories = new Set(['Budget', 'Quote', 'Allocation'])
   const filtered = rows
     .filter((r) => (season === '__all__' ? true : r.season === season))
+    .filter((r) => (type === '__all__' ? true : r.category === type))
     .filter((r) => (mine ? approverCategories.has(r.category) || !!r.costImpact.trim() : true))
 
   if (rows.length === 0) {
     return <Empty title="Nothing waiting on an approval" body="Raise approvals from a project's Approvals page." />
   }
+
+  const pendingCost = filtered.reduce((sum, r) => sum + r.costValue, 0)
 
   return (
     <div>
@@ -269,6 +276,32 @@ function ApprovalTable({ rows }: { rows: ApprovalRow[] }) {
         )}
       </div>
 
+      {typesPresent.length > 1 && (
+        <div className="flex flex-wrap items-center gap-1.5 mb-3">
+          <span className="text-2xs font-bold uppercase tracking-widest text-ink-faint mr-1">Type</span>
+          {['__all__', ...typesPresent].map((t) => (
+            <button key={t} onClick={() => setType(t)}
+              className={cn('text-xs px-2.5 py-1 rounded border transition-colors',
+                type === t ? 'bg-accent text-white border-accent'
+                           : 'bg-white text-ink-muted border-surface-3 hover:border-accent/40')}>
+              {t === '__all__' ? 'All types' : t}
+              <span className="ml-1 opacity-70 tabular-nums">
+                {t === '__all__' ? rows.length : rows.filter((r) => r.category === t).length}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <p className="text-xs text-ink-muted mb-3">
+        <span className="font-semibold text-ink tabular-nums">{filtered.length}</span> pending
+        {pendingCost !== 0 && (
+          <> · <span className="font-semibold text-ink tabular-nums">
+            {pendingCost < 0 ? '−' : '+'}${Math.abs(Math.round(pendingCost)).toLocaleString()}
+          </span> of cost impact awaiting a decision</>
+        )}
+      </p>
+
       {filtered.length === 0 ? (
         <Empty title="Nothing in this queue" body="Try clearing the filters." />
       ) : (
@@ -280,6 +313,7 @@ function ApprovalTable({ rows }: { rows: ApprovalRow[] }) {
                 <Th>Decision</Th>
                 <Th className="w-40">Project</Th>
                 <Th className="w-20">Season</Th>
+                <Th className="w-28">Raised by</Th>
                 <Th className="w-36">Recommendation</Th>
                 <Th className="w-24">Cost impact</Th>
                 <Th className="w-20">Status</Th>
@@ -312,6 +346,7 @@ function ApprovalTable({ rows }: { rows: ApprovalRow[] }) {
                       </Link>
                     </Td>
                     <Td className="text-xs text-ink-muted">{a.season || '—'}</Td>
+                    <Td className="text-xs text-ink-muted">{a.raisedBy || '—'}</Td>
                     <Td className="text-xs text-ink-muted">{a.recommendation || '—'}</Td>
                     <Td className="text-xs text-ink-muted">{a.costImpact || '—'}</Td>
                     <Td>

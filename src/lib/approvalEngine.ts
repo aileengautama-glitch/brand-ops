@@ -105,6 +105,20 @@ export function resolveApproval(args: ResolveArgs): ApprovalChange[] {
       })
     }
 
+    // 2b — budget lines this decision covers become approved spend.
+    for (const bid of approval.linkedBudgetItemIds ?? []) {
+      const line = (project.budgetItems ?? []).find((b) => b.id === bid)
+      if (!line || line.status === 'approved' || line.status === 'paid') continue
+      const patch = { status: 'approved' as const }
+      if (module === 'shoot') shoot.updateBudgetItem(projectId, bid, patch)
+      else event.updateBudgetItem(projectId, bid, patch)
+      changes.push({
+        id: generateId(), at, by,
+        label: `Budget line: ${line.description || 'untitled'}`,
+        oldValue: line.status, newValue: 'approved',
+      })
+    }
+
     // 3 — release tasks that were waiting on this approval.
     for (const tid of approval.linkedTaskIds ?? []) {
       const task = project.tasks.find((t) => t.id === tid)
@@ -151,6 +165,95 @@ export function resolveApproval(args: ResolveArgs): ApprovalChange[] {
   }
 
   return changes
+}
+
+/**
+ * Send an approval back to whoever raised it, without deciding it.
+ * Stays open (so it keeps its place in the queue) but records who bounced it and why.
+ */
+export function sendBackApproval(args: {
+  module: ApprovalModule
+  projectId: string
+  projectName: string
+  approval: Approval
+  by: string
+  note: string
+}): void {
+  const { module, projectId, projectName, approval, by, note } = args
+  const at = new Date().toISOString()
+
+  const entry: ApprovalChange = {
+    id: generateId(), at, by,
+    label: 'Sent back for more information',
+    oldValue: 'awaiting decision',
+    newValue: note.trim() || 'more detail needed',
+  }
+  const patch: Partial<Approval> = {
+    status: 'open',
+    needsInfo: true,
+    changeLog: [...(approval.changeLog ?? []), entry],
+  }
+  if (module === 'shoot') useShootStore.getState().updateDecision(projectId, approval.id, patch)
+  else useEventStore.getState().updateDecision(projectId, approval.id, patch)
+
+  useNotificationStore.getState().notify({
+    kind: 'approval',
+    title: `${projectName}: "${approval.title}" sent back`,
+    body: note.trim() ? `${by}: ${note.trim()}` : `${by} needs more information.`,
+    href: `/${module}s/${projectId}/approvals`,
+    audience: approval.raisedBy ?? '',
+  })
+}
+
+/** One line of "here's what approving will do", for the confirm step. */
+export interface ApprovalEffect {
+  kind: 'field' | 'gate' | 'task' | 'budget'
+  text: string
+}
+
+/**
+ * Describe what approving would change, so the approver sees it BEFORE committing.
+ * Reads current values so "sets X from A to B" is accurate at the moment of asking.
+ */
+export function previewApproval(
+  module: ApprovalModule, projectId: string, approval: Approval,
+): ApprovalEffect[] {
+  const project = module === 'shoot'
+    ? useShootStore.getState().projects.find((p) => p.id === projectId)
+    : useEventStore.getState().projects.find((p) => p.id === projectId)
+  if (!project) return []
+
+  const out: ApprovalEffect[] = []
+
+  for (const t of approval.targets ?? []) {
+    const current = readTarget(module, t.field, project)
+    if (current === t.value) continue
+    out.push({
+      kind: 'field',
+      text: `Sets ${targetLabel(module, t.field)} to “${t.value || '—'}”${current ? ` (was “${current}”)` : ''}`,
+    })
+  }
+
+  for (const gid of approval.linkedGateIds ?? []) {
+    const gate = project.milestones.find((m) => m.id === gid)
+    if (gate && !gate.completed) out.push({ kind: 'gate', text: `Completes gate “${gate.title}”` })
+  }
+
+  for (const bid of approval.linkedBudgetItemIds ?? []) {
+    const line = (project.budgetItems ?? []).find((b) => b.id === bid)
+    if (line && line.status !== 'approved' && line.status !== 'paid') {
+      out.push({ kind: 'budget', text: `Approves budget line “${line.description || 'untitled'}”` })
+    }
+  }
+
+  for (const tid of approval.linkedTaskIds ?? []) {
+    const task = project.tasks.find((t) => t.id === tid)
+    if (task && task.blockedByApprovalId === approval.id) {
+      out.push({ kind: 'task', text: `Releases task “${task.title}”` })
+    }
+  }
+
+  return out
 }
 
 /** True for any resolved state (including the legacy Phase-1 'decided'). */
